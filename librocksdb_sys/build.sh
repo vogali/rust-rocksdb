@@ -14,44 +14,18 @@ function error() {
     return 1
 }
 
-function md5_check() {
-    if which md5sum &>/dev/null; then
-        hash=`md5sum $1 | cut -d ' ' -f 1`
-    elif which openssl &>/dev/null; then
-        hash=`openssl md5 -hex $1 | cut -d ' ' -f 2`
-    else
-        error can\'t find hash tool.
-    fi
-
-    [[ "$hash" == "$2" ]] || error $1: hash not correct, expect $2, got $hash
-}
+project_root=`dirname $0`
 
 retry=3
-function download() {
-    if [[ -f $2 ]] && md5_check $2 $3; then
-        return
-    fi
-
-    if which curl &>/dev/null; then
-        curl --retry $retry -L $1 -o $2
-    elif which wget &>/dev/null; then
-        wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries $retry $1 -O $2
-    else
-        error can\'t find wget and curl.
-    fi
-
-    md5_check $2 $3
-}
 
 function compile_z() {
     if [[ -f libz.a ]]; then
         return
     fi
 
-    rm -rf zlib-1.2.11
-    download http://zlib.net/zlib-1.2.11.tar.gz zlib-1.2.11.tar.gz 1c9f62f0778697a09d36121ead88e08e
-    tar xf zlib-1.2.11.tar.gz
-    cd zlib-1.2.11
+    rm -rf zlib
+    cp -r $project_root/zlib ./
+    cd zlib
     CFLAGS='-fPIC' ./configure --static
     make -j $con
     cp libz.a ../
@@ -63,10 +37,9 @@ function compile_bz2() {
         return
     fi
 
-    rm -rf bzip2-1.0.6
-    download http://www.bzip.org/1.0.6/bzip2-1.0.6.tar.gz bzip2-1.0.6.tar.gz 00b516f4704d4a7cb50a1d97e6e8e15b
-    tar xvzf bzip2-1.0.6.tar.gz
-    cd bzip2-1.0.6
+    rm -rf bzip2
+    cp -r $project_root/bzip2 ./
+    cd bzip2
     make CFLAGS='-fPIC -O2 -g -D_FILE_OFFSET_BITS=64' -j $con
     cp libbz2.a ../
     cd ..
@@ -77,10 +50,10 @@ function compile_snappy() {
         return
     fi
 
-    rm -rf snappy-1.1.1
-    download http://pkgs.fedoraproject.org/repo/pkgs/snappy/snappy-1.1.1.tar.gz/8887e3b7253b22a31f5486bca3cbc1c2/snappy-1.1.1.tar.gz snappy-1.1.1.tar.gz 8887e3b7253b22a31f5486bca3cbc1c2
-    tar xvzf snappy-1.1.1.tar.gz
-    cd snappy-1.1.1
+    rm -rf snappy
+    cp -r $project_root/snappy ./
+    cd snappy
+    ./autogen.sh
     ./configure --with-pic --enable-static
     make -j $con
     mv .libs/libsnappy.a ../
@@ -92,10 +65,9 @@ function compile_lz4() {
         return
     fi
 
-    rm -rf lz4-r127
-    download https://github.com/Cyan4973/lz4/archive/r131.tar.gz lz4-r131.tar.gz 42b09fab42331da9d3fb33bd5c560de9
-    tar xvzf lz4-r131.tar.gz
-    cd lz4-r131/lib
+    rm -rf lz4
+    cp -r $project_root/lz4 ./
+    cd lz4/lib
     make CFLAGS='-fPIC' all -j $con
     mv liblz4.a ../../
     cd ../..
@@ -106,17 +78,14 @@ function compile_rocksdb() {
         return
     fi
 
-    version=v5.0.1
-    vernum=5.0.1
-    echo building rocksdb-$version
-    rm -rf rocksdb-$vernum
-    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz e5443504b430c71c04f19f13ebc89a4b
-    tar xf rocksdb-$version.tar.gz
+    echo building rocksdb
+    rm -rf rocksdb
+    cp -r $project_root/rocksdb ./
     wd=`pwd`
-    cd rocksdb-$vernum
+    cd rocksdb
     cp $CROCKSDB_PATH/c.cc ./db/c.cc
     cp $CROCKSDB_PATH/rocksdb/c.h ./include/rocksdb/c.h
-    export EXTRA_CFLAGS="-fPIC -I${wd}/zlib-1.2.10 -I${wd}/bzip2-1.0.6 -I${wd}/snappy-1.1.1 -I${wd}/lz4-r131/lib"
+    export EXTRA_CFLAGS="-fPIC -I${wd}/zlib -I${wd}/bzip2 -I${wd}/snappy -I${wd}/lz4/lib"
     export EXTRA_CXXFLAGS="-DZLIB -DBZIP2 -DSNAPPY -DLZ4 $EXTRA_CFLAGS"
     make static_lib -j $con
     mv librocksdb.a ../

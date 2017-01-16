@@ -1,0 +1,16 @@
+[submodule "librocksdb_sys/lz4"]
+	shallow = true
+	path = librocksdb_sys/lz4
+	url = https://github.com/lz4/lz4.git
+[submodule "librocksdb_sys/snappy"]
+	shallow = true
+	path = librocksdb_sys/snappy
+	url = https://github.com/google/snappy.git
+[submodule "librocksdb_sys/zlib"]
+	shallow = true
+	path = librocksdb_sys/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "librocksdb_sys/rocksdb"]
+	shallow = true
+	path = librocksdb_sys/rocksdb
+	url = https://github.com/facebook/rocksdb
