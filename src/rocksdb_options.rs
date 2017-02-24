@@ -528,6 +528,13 @@ impl Options {
         }
     }
 
+    pub fn set_wal_dir(&mut self, path: &str) {
+        let path = CString::new(path.as_bytes()).unwrap();
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_wal_dir(self.inner, path.as_ptr());
+        }
+    }
+
     pub fn enable_statistics(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_options_enable_statistics(self.inner);
