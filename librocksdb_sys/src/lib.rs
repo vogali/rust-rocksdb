@@ -149,6 +149,13 @@ pub enum DBInfoLogLevel {
     DBNumInfoLog = 6,
 }
 
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum DBIndexType {
+    DBBinarySearch = 0,
+    DBHashSearch = 1,
+}
+
 pub fn error_message(ptr: *mut c_char) -> String {
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let s = format!("{}", c_str.to_string_lossy());
@@ -203,7 +210,9 @@ extern "C" {
         block_options: *mut DBBlockBasedTableOptions,
         block_cache_compressed: *mut DBCache);
     pub fn crocksdb_block_based_options_set_whole_key_filtering(
-        ck_options: *mut DBBlockBasedTableOptions, doit: bool);
+        block_options: *mut DBBlockBasedTableOptions, doit: bool);
+    pub fn crocksdb_block_based_options_set_index_type(
+        block_options: *mut DBBlockBasedTableOptions, v: DBIndexType);
     pub fn crocksdb_options_set_block_based_table_factory(
         options: *mut DBOptions,
         block_options: *mut DBBlockBasedTableOptions);

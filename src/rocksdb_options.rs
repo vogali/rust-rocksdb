@@ -19,7 +19,7 @@ use comparator::{self, ComparatorCallback, compare_callback};
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
                    DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
-                   DBRateLimiter, DBInfoLogLevel, DBCompactOptions};
+                   DBRateLimiter, DBInfoLogLevel, DBCompactOptions, DBIndexType};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
 use merge_operator::MergeFn;
@@ -109,6 +109,12 @@ impl BlockBasedOptions {
             crocksdb_ffi::crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
                 self.inner,
                 v as u8);
+        }
+    }
+
+    pub fn set_index_type(&mut self, v: DBIndexType) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_index_type(self.inner, v);
         }
     }
 }
