@@ -515,16 +515,16 @@ impl DB {
 
     pub fn multi_get_cf_opt(&self,
                             cf: &CFHandle,
-                            keys_vec: &[&[u8]],
+                            keys: &[&[u8]],
                             readopts: &ReadOptions)
                             -> Vec<Result<Option<DBVector>, String>> {
         unsafe {
-            let num_keys = keys_vec.len() as size_t;
+            let num_keys = keys.len() as size_t;
             let mut keys_list = Vec::with_capacity(num_keys);
             let mut keys_list_sizes = Vec::with_capacity(num_keys);
             for i in 0..num_keys {
-                keys_list.push(keys_vec[i].as_ptr());
-                keys_list_sizes.push(keys_vec[i].len() as size_t);
+                keys_list.push(keys[i].as_ptr());
+                keys_list_sizes.push(keys[i].len() as size_t);
             }
             let keys_list = keys_list.as_ptr();
             let keys_list_sizes = keys_list_sizes.as_ptr();
@@ -558,23 +558,23 @@ impl DB {
 
     pub fn multi_get_cf(&self,
                         cf: &CFHandle,
-                        keys_vec: &[&[u8]])
+                        keys: &[&[u8]])
                         -> Vec<Result<Option<DBVector>, String>> {
-        self.multi_get_cf_opt(cf, keys_vec, &ReadOptions::new())
+        self.multi_get_cf_opt(cf, keys, &ReadOptions::new())
     }
 
     pub fn multi_get_opt(&self,
-                         keys_vec: &[&[u8]],
+                         keys: &[&[u8]],
                          readopts: &ReadOptions)
                          -> Vec<Result<Option<DBVector>, String>> {
         self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
-                              keys_vec,
+                              keys,
                               readopts)
     }
 
-    pub fn multi_get(&self, keys_vec: &[&[u8]]) -> Vec<Result<Option<DBVector>, String>> {
+    pub fn multi_get(&self, keys: &[&[u8]]) -> Vec<Result<Option<DBVector>, String>> {
         self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
-                              keys_vec,
+                              keys,
                               &ReadOptions::new())
     }
 
