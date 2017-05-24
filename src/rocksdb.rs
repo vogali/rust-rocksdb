@@ -515,7 +515,7 @@ impl DB {
 
     pub fn multi_get_cf_opt(&self,
                             cf: &CFHandle,
-                            keys_vec: &[Vec<u8>],
+                            keys_vec: &[&[u8]],
                             readopts: &ReadOptions)
                             -> Vec<Result<Option<DBVector>, String>> {
         unsafe {
@@ -558,13 +558,13 @@ impl DB {
 
     pub fn multi_get_cf(&self,
                         cf: &CFHandle,
-                        keys_vec: &[Vec<u8>])
+                        keys_vec: &[&[u8]])
                         -> Vec<Result<Option<DBVector>, String>> {
         self.multi_get_cf_opt(cf, keys_vec, &ReadOptions::new())
     }
 
     pub fn multi_get_opt(&self,
-                         keys_vec: &[Vec<u8>],
+                         keys_vec: &[&[u8]],
                          readopts: &ReadOptions)
                          -> Vec<Result<Option<DBVector>, String>> {
         self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
@@ -572,7 +572,7 @@ impl DB {
                               readopts)
     }
 
-    pub fn multi_get(&self, keys_vec: &[Vec<u8>]) -> Vec<Result<Option<DBVector>, String>> {
+    pub fn multi_get(&self, keys_vec: &[&[u8]]) -> Vec<Result<Option<DBVector>, String>> {
         self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
                               keys_vec,
                               &ReadOptions::new())
