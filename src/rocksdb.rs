@@ -515,9 +515,9 @@ impl DB {
 
     pub fn multi_get_cf_opt(&self,
                             cf: &CFHandle,
-                            keys_vec: Vec<&[u8]>,
+                            keys_vec: &[Vec<u8>],
                             readopts: &ReadOptions)
-                            -> Result<Option<Vec<DBVector>>, String> {
+                            -> Vec<Result<Option<DBVector>, String>> {
         unsafe {
             let num_keys = keys_vec.len() as size_t;
             let mut keys_list = Vec::with_capacity(num_keys);
@@ -528,64 +528,54 @@ impl DB {
             }
             let keys_list = keys_list.as_ptr();
             let keys_list_sizes = keys_list_sizes.as_ptr();
-            let mut value_list = Vec::<*mut u8>::with_capacity(num_keys);
-            let mut value_list_sizes = Vec::<size_t>::with_capacity(num_keys);
-            ffi_try!(crocksdb_multi_get_cf(self.inner,
-                                           readopts.get_inner(),
-                                           cf.inner,
-                                           num_keys,
-                                           keys_list,
-                                           keys_list_sizes,
-                                           value_list.as_mut_ptr(),
-                                           value_list_sizes.as_mut_ptr()));
+            let mut value_list = Vec::with_capacity(num_keys);
+            let mut value_list_sizes = Vec::with_capacity(num_keys);
+            let mut err_list = Vec::with_capacity(num_keys);
+            crocksdb_ffi::crocksdb_multi_get_cf(self.inner,
+                                                readopts.get_inner(),
+                                                cf.inner,
+                                                num_keys,
+                                                keys_list,
+                                                keys_list_sizes,
+                                                value_list.as_mut_ptr(),
+                                                value_list_sizes.as_mut_ptr(),
+                                                err_list.as_mut_ptr());
             let mut value_vec = Vec::with_capacity(num_keys);
             for i in 0..num_keys {
-                value_vec.push(DBVector::from_c(value_list[i], value_list_sizes[i]));
+                if !err_list[i].is_null() {
+                    value_vec.push(Err(crocksdb_ffi::error_message(err_list[i])));
+                } else {
+                    if 0 == value_list_sizes[i] {
+                        value_vec.push(Ok(None));
+                    } else {
+                        value_vec.push(Ok(Some(DBVector::from_c(value_list[i], value_list_sizes[i]))));
+                    }
+                }
             }
-            Ok(Some(value_vec))
+            value_vec
         }
     }
 
     pub fn multi_get_cf(&self,
                         cf: &CFHandle,
-                        keys_vec: Vec<&[u8]>)
-                        -> Result<Option<Vec<DBVector>>, String> {
+                        keys_vec: &[Vec<u8>])
+                        -> Vec<Result<Option<DBVector>, String>> {
         self.multi_get_cf_opt(cf, keys_vec, &ReadOptions::new())
     }
 
     pub fn multi_get_opt(&self,
-                         keys_vec: Vec<&[u8]>,
+                         keys_vec: &[Vec<u8>],
                          readopts: &ReadOptions)
-                         -> Result<Option<Vec<DBVector>>, String> {
-        unsafe {
-            let num_keys = keys_vec.len() as size_t;
-            let mut keys_list = Vec::with_capacity(num_keys);
-            let mut keys_list_sizes = Vec::with_capacity(num_keys);
-            for i in 0..num_keys {
-                keys_list.push(keys_vec[i].as_ptr());
-                keys_list_sizes.push(keys_vec[i].len() as size_t);
-            }
-            let keys_list = keys_list.as_ptr();
-            let keys_list_sizes = keys_list_sizes.as_ptr();
-            let mut value_list = Vec::<*mut u8>::with_capacity(num_keys);
-            let mut value_list_sizes = Vec::<size_t>::with_capacity(num_keys);
-            ffi_try!(crocksdb_multi_get(self.inner,
-                                        readopts.get_inner(),
-                                        num_keys,
-                                        keys_list,
-                                        keys_list_sizes,
-                                        value_list.as_mut_ptr(),
-                                        value_list_sizes.as_mut_ptr()));
-            let mut value_vec = Vec::with_capacity(num_keys);
-            for i in 0..num_keys {
-                value_vec.push(DBVector::from_c(value_list[i], value_list_sizes[i]));
-            }
-            Ok(Some(value_vec))
-        }
+                         -> Vec<Result<Option<DBVector>, String>> {
+        self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
+                              keys_vec,
+                              readopts)
     }
 
-    pub fn multi_get(&self, keys_vec: Vec<&[u8]>) -> Result<Option<Vec<DBVector>>, String> {
-        self.multi_get_opt(keys_vec, &ReadOptions::new())
+    pub fn multi_get(&self, keys_vec: &[Vec<u8>]) -> Vec<Result<Option<DBVector>, String>> {
+        self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
+                              keys_vec,
+                              &ReadOptions::new())
     }
 
     pub fn create_cf(&mut self, name: &str, opts: &Options) -> Result<&CFHandle, String> {

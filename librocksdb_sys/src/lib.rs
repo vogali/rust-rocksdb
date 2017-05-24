@@ -372,7 +372,7 @@ extern "C" {
                               keys_list: *const *const u8,
                               keys_list_sizes: *const size_t,
                               values_list: *mut *mut u8,
-                              values_list_sizes: *const size_t,
+                              values_list_sizes: *mut size_t,
                               errs: *mut *mut c_char);
     pub fn crocksdb_multi_get_cf(db: *const DBInstance,
                                  readopts: *const DBReadOptions,
@@ -381,7 +381,7 @@ extern "C" {
                                  keys_list: *const *const u8,
                                  keys_list_sizes: *const size_t,
                                  values_list: *mut *mut u8,
-                                 values_list_sizes: *const size_t,
+                                 values_list_sizes: *mut size_t,
                                  errs: *mut *mut c_char);
     pub fn crocksdb_create_iterator(db: *mut DBInstance,
                                     readopts: *const DBReadOptions)
