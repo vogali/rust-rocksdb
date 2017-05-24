@@ -515,9 +515,9 @@ impl DB {
 
     pub fn multi_get_cf_opt(&self,
                             cf: &CFHandle,
-                            keys: &[&[u8]],
+                            keys: &[Vec<u8>],
                             readopts: &ReadOptions)
-                            -> Vec<Result<Option<DBVector>, String>> {
+                            -> Result<Vec<Option<DBVector>>, String> {
         unsafe {
             let num_keys = keys.len() as size_t;
             let mut keys_list = Vec::with_capacity(num_keys);
@@ -543,36 +543,36 @@ impl DB {
             let mut value_vec = Vec::with_capacity(num_keys);
             for i in 0..num_keys {
                 if !err_list[i].is_null() {
-                    value_vec.push(Err(crocksdb_ffi::error_message(err_list[i])));
+                    return Err(crocksdb_ffi::error_message(err_list[i]));
                 } else {
                     if 0 == value_list_sizes[i] {
-                        value_vec.push(Ok(None));
+                        value_vec.push(None);
                     } else {
-                        value_vec.push(Ok(Some(DBVector::from_c(value_list[i], value_list_sizes[i]))));
+                        value_vec.push(Some(DBVector::from_c(value_list[i], value_list_sizes[i])));
                     }
                 }
             }
-            value_vec
+            Ok(value_vec)
         }
     }
 
     pub fn multi_get_cf(&self,
                         cf: &CFHandle,
-                        keys: &[&[u8]])
-                        -> Vec<Result<Option<DBVector>, String>> {
+                        keys: &[Vec<u8>])
+                        -> Result<Vec<Option<DBVector>>, String> {
         self.multi_get_cf_opt(cf, keys, &ReadOptions::new())
     }
 
     pub fn multi_get_opt(&self,
-                         keys: &[&[u8]],
+                         keys: &[Vec<u8>],
                          readopts: &ReadOptions)
-                         -> Vec<Result<Option<DBVector>, String>> {
+                         -> Result<Vec<Option<DBVector>>, String> {
         self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
                               keys,
                               readopts)
     }
 
-    pub fn multi_get(&self, keys: &[&[u8]]) -> Vec<Result<Option<DBVector>, String>> {
+    pub fn multi_get(&self, keys: &[Vec<u8>]) -> Result<Vec<Option<DBVector>>, String> {
         self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
                               keys,
                               &ReadOptions::new())
