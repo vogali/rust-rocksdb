@@ -820,8 +820,8 @@ void crocksdb_multi_get(
       values_list_sizes[i] = 0;
       if (!statuses[i].IsNotFound()) {
         SaveError(errptr, statuses[i]);
-        for (ssize_t j = i-1; j >= 0; j--) {
-          free(values_list[j]);
+        while (i--) {
+          free(values_list[i]);
         }
         return;
       }
@@ -854,8 +854,8 @@ void crocksdb_multi_get_cf(
       values_list_sizes[i] = 0;
       if (!statuses[i].IsNotFound()) {
         SaveError(errptr, statuses[i]);
-        for (ssize_t j = i-1; j >= 0; j--) {
-          free(values_list[j]);
+        while (i--) {
+          free(values_list[i]);
         }
         return;
       }
