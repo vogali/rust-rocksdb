@@ -854,6 +854,7 @@ void crocksdb_multi_get_cf(
       values_list_sizes[i] = 0;
       if (!statuses[i].IsNotFound()) {
         errs[i] = strdup(statuses[i].ToString().c_str());
+        break;
       } else {
         errs[i] = nullptr;
       }
