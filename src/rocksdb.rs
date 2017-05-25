@@ -525,7 +525,7 @@ impl DB {
             let mut key_sizes = Vec::with_capacity(num_keys);
             let mut value_list = Vec::with_capacity(num_keys);
             let mut value_sizes = Vec::with_capacity(num_keys);
-            let err = ptr::null_mut();
+            let mut err = ptr::null_mut();
             for i in 0..num_keys {
                 cf_list.push(cfs[i].inner);
                 key_list.push(keys[i].as_ptr());
@@ -542,7 +542,7 @@ impl DB {
                                                 key_sizes.as_ptr(),
                                                 value_list.as_mut_ptr(),
                                                 value_sizes.as_mut_ptr(),
-                                                err);
+                                                &mut err);
             if !err.is_null() {
                 return Err(crocksdb_ffi::error_message(err));
             }
