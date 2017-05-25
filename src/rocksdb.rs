@@ -514,41 +514,45 @@ impl DB {
     }
 
     pub fn multi_get_cf_opt(&self,
-                            cf: &CFHandle,
+                            cfs: &[&CFHandle],
                             keys: &[&[u8]],
                             readopts: &ReadOptions)
                             -> Result<Vec<Option<DBVector>>, String> {
         unsafe {
             let num_keys = keys.len() as size_t;
-            let mut keys_list = Vec::with_capacity(num_keys);
-            let mut keys_list_sizes = Vec::with_capacity(num_keys);
-            for i in 0..num_keys {
-                keys_list.push(keys[i].as_ptr());
-                keys_list_sizes.push(keys[i].len() as size_t);
-            }
-            let keys_list = keys_list.as_ptr();
-            let keys_list_sizes = keys_list_sizes.as_ptr();
+            let mut cf_list = Vec::with_capacity(num_keys);
+            let mut key_list = Vec::with_capacity(num_keys);
+            let mut key_sizes = Vec::with_capacity(num_keys);
             let mut value_list = Vec::with_capacity(num_keys);
-            let mut value_list_sizes = Vec::with_capacity(num_keys);
+            let mut value_sizes = Vec::with_capacity(num_keys);
             let mut err_list = Vec::with_capacity(num_keys);
+            for i in 0..num_keys {
+                cf_list.push(cfs[i].inner);
+                key_list.push(keys[i].as_ptr());
+                key_sizes.push(keys[i].len() as size_t);
+                value_list.push(ptr::null_mut());
+                value_sizes.push(0);
+                err_list.push(ptr::null_mut());
+            }
+
             crocksdb_ffi::crocksdb_multi_get_cf(self.inner,
                                                 readopts.get_inner(),
-                                                cf.inner,
+                                                cf_list.as_ptr(),
                                                 num_keys,
-                                                keys_list,
-                                                keys_list_sizes,
+                                                key_list.as_ptr(),
+                                                key_sizes.as_ptr(),
                                                 value_list.as_mut_ptr(),
-                                                value_list_sizes.as_mut_ptr(),
+                                                value_sizes.as_mut_ptr(),
                                                 err_list.as_mut_ptr());
             let mut value_vec = Vec::with_capacity(num_keys);
             for i in 0..num_keys {
                 if !err_list[i].is_null() {
                     return Err(crocksdb_ffi::error_message(err_list[i]));
                 } else {
-                    if 0 == value_list_sizes[i] {
+                    if 0 == value_sizes[i] {
                         value_vec.push(None);
                     } else {
-                        value_vec.push(Some(DBVector::from_c(value_list[i], value_list_sizes[i])));
+                        value_vec.push(Some(DBVector::from_c(value_list[i], value_sizes[i])));
                     }
                 }
             }
@@ -557,25 +561,27 @@ impl DB {
     }
 
     pub fn multi_get_cf(&self,
-                        cf: &CFHandle,
+                        cfs: &[&CFHandle],
                         keys: &[&[u8]])
                         -> Result<Vec<Option<DBVector>>, String> {
-        self.multi_get_cf_opt(cf, keys, &ReadOptions::new())
+        self.multi_get_cf_opt(cfs, keys, &ReadOptions::new())
     }
 
     pub fn multi_get_opt(&self,
                          keys: &[&[u8]],
                          readopts: &ReadOptions)
                          -> Result<Vec<Option<DBVector>>, String> {
-        self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
-                              keys,
-                              readopts)
+        let cfs: Vec<&CFHandle> = (0..keys.len())
+            .map(|_| self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap())
+            .collect();
+        self.multi_get_cf_opt(&cfs, keys, readopts)
     }
 
     pub fn multi_get(&self, keys: &[&[u8]]) -> Result<Vec<Option<DBVector>>, String> {
-        self.multi_get_cf_opt(self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(),
-                              keys,
-                              &ReadOptions::new())
+        let cfs: Vec<&CFHandle> = (0..keys.len())
+            .map(|_| self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap())
+            .collect();
+        self.multi_get_cf_opt(&cfs, keys, &ReadOptions::new())
     }
 
     pub fn create_cf(&mut self, name: &str, opts: &Options) -> Result<&CFHandle, String> {
@@ -1917,5 +1923,30 @@ mod test {
         let total_sst_files_size = db.get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
             .unwrap();
         assert!(total_sst_files_size > 0);
+    }
+
+    #[test]
+    fn test_multi_get() {
+        let path = TempDir::new("_rust_rocksdb_multi_get").expect("");
+        let mut opts = Options::new();
+        opts.create_if_missing(true);
+        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+
+        let kvpairs = vec![("k_1".as_bytes(), "v_sdfsdf".as_bytes()),
+                           ("k_2".as_bytes(), "v_sdge".as_bytes()),
+                           ("k_3".as_bytes(), "v_3jqrsy4".as_bytes())];
+        for &(k, v) in kvpairs.iter() {
+            assert!(db.put(k, v).is_ok());
+        }
+        let mut keys: Vec<&[u8]> = kvpairs.iter().map(|&(k, _)| k).collect();
+        keys.insert(1, "k_11".as_bytes());
+        keys.insert(3, "k_31".as_bytes());
+        let vals = db.multi_get(&keys).unwrap();
+        println!("{:?}", vals);
+        assert!(vals[0].is_some());
+        assert!(vals[1].is_none());
+        assert!(vals[2].is_some());
+        assert!(vals[3].is_none());
+        assert!(vals[4].is_some());
     }
 }

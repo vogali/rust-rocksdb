@@ -376,7 +376,7 @@ extern "C" {
                               errs: *mut *mut c_char);
     pub fn crocksdb_multi_get_cf(db: *const DBInstance,
                                  readopts: *const DBReadOptions,
-                                 cf_handle: *mut DBCFHandle,
+                                 cf_handles: *const *mut DBCFHandle,
                                  num_keys: size_t,
                                  keys_list: *const *const u8,
                                  keys_list_sizes: *const size_t,
