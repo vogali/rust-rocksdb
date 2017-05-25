@@ -543,6 +543,9 @@ impl DB {
             let mut value_vec = Vec::with_capacity(num_keys);
             for i in 0..num_keys {
                 if !err_list[i].is_null() {
+                    for &err in &err_list[i + 1..] {
+                        libc::free(err as *mut c_void);
+                    }
                     return Err(crocksdb_ffi::error_message(err_list[i]));
                 } else {
                     if 0 == value_list_sizes[i] {
