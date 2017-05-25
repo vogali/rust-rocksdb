@@ -525,14 +525,13 @@ impl DB {
             let mut key_sizes = Vec::with_capacity(num_keys);
             let mut value_list = Vec::with_capacity(num_keys);
             let mut value_sizes = Vec::with_capacity(num_keys);
-            let mut err_list = Vec::with_capacity(num_keys);
+            let err = ptr::null_mut();
             for i in 0..num_keys {
                 cf_list.push(cfs[i].inner);
                 key_list.push(keys[i].as_ptr());
                 key_sizes.push(keys[i].len() as size_t);
                 value_list.push(ptr::null_mut());
                 value_sizes.push(0);
-                err_list.push(ptr::null_mut());
             }
 
             crocksdb_ffi::crocksdb_multi_get_cf(self.inner,
@@ -543,20 +542,20 @@ impl DB {
                                                 key_sizes.as_ptr(),
                                                 value_list.as_mut_ptr(),
                                                 value_sizes.as_mut_ptr(),
-                                                err_list.as_mut_ptr());
-            let mut value_vec = Vec::with_capacity(num_keys);
-            for i in 0..num_keys {
-                if !err_list[i].is_null() {
-                    return Err(crocksdb_ffi::error_message(err_list[i]));
-                } else {
-                    if 0 == value_sizes[i] {
-                        value_vec.push(None);
-                    } else {
-                        value_vec.push(Some(DBVector::from_c(value_list[i], value_sizes[i])));
-                    }
-                }
+                                                err);
+            if !err.is_null() {
+                return Err(crocksdb_ffi::error_message(err));
             }
-            Ok(value_vec)
+            let values: Vec<_> = (0..num_keys)
+                .map(|i| {
+                    if 0 == value_sizes[i] {
+                        None
+                    } else {
+                        Some(DBVector::from_c(value_list[i], value_sizes[i]))
+                    }
+                })
+                .collect();
+            Ok(values)
         }
     }
 
@@ -1942,7 +1941,6 @@ mod test {
         keys.insert(1, "k_11".as_bytes());
         keys.insert(3, "k_31".as_bytes());
         let vals = db.multi_get(&keys).unwrap();
-        println!("{:?}", vals);
         assert!(vals[0].is_some());
         assert!(vals[1].is_none());
         assert!(vals[2].is_some());
