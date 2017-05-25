@@ -570,16 +570,12 @@ impl DB {
                          keys: &[&[u8]],
                          readopts: &ReadOptions)
                          -> Result<Vec<Option<DBVector>>, String> {
-        let cfs: Vec<&CFHandle> = (0..keys.len())
-            .map(|_| self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap())
-            .collect();
+        let cfs = vec![self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(); keys.len()];
         self.multi_get_cf_opt(&cfs, keys, readopts)
     }
 
     pub fn multi_get(&self, keys: &[&[u8]]) -> Result<Vec<Option<DBVector>>, String> {
-        let cfs: Vec<&CFHandle> = (0..keys.len())
-            .map(|_| self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap())
-            .collect();
+        let cfs = vec![self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(); keys.len()];
         self.multi_get_cf_opt(&cfs, keys, &ReadOptions::new())
     }
 
