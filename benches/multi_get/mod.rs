@@ -83,9 +83,6 @@ fn bench_get_serially(b: &mut Bencher) {
     });
 }
 
-use std::thread::sleep;
-use std::time::Duration;
-
 #[bench]
 fn bench_iterator(b: &mut Bencher) {
     let path = TempDir::new("_rust_rocksdb_iterator").expect("");
