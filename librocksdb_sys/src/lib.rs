@@ -44,6 +44,7 @@ pub enum DBSliceTransform {}
 pub enum DBRateLimiter {}
 pub enum DBLogger {}
 pub enum DBCompactOptions {}
+pub enum DBPinnableSlice {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -86,6 +87,26 @@ pub enum DBRecoveryMode {
     AbsoluteConsistency = 1,
     PointInTime = 2,
     SkipAnyCorruptedRecords = 3,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum CompactionPriority {
+    // In Level-based compaction, it Determines which file from a level to be
+    // picked to merge to the next level. We suggest people try
+    // kMinOverlappingRatio first when you tune your database.
+    ByCompensatedSize = 0,
+    // First compact files whose data's latest update time is oldest.
+    // Try this if you only update some hot keys in small ranges.
+    OldestLargestSeqFirst = 1,
+    // First compact files whose range hasn't been compacted to the next level
+    // for the longest. If your updates are random across the key space,
+    // write amplification is slightly better with this option.
+    OldestSmallestSeqFirst = 2,
+    // First compact files whose ratio between overlapping size in next level
+    // and its size is the smallest. It in many cases can optimize write
+    // amplification.
+    MinOverlappingRatio = 3,
 }
 
 #[derive(Copy, Clone)]
@@ -314,6 +335,8 @@ extern "C" {
                                                                     v: u64);
     pub fn crocksdb_options_set_hard_pending_compaction_bytes_limit(options: *mut DBOptions,
                                                                     v: u64);
+    pub fn crocksdb_options_set_compaction_priority(options: *mut DBOptions,
+                                                    v: CompactionPriority);
     pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(options: *mut DBOptions,
@@ -764,6 +787,24 @@ extern "C" {
                                             err: *mut *mut c_char)
                                             -> *mut DBLogger;
     pub fn crocksdb_log_destroy(logger: *mut DBLogger);
+
+    pub fn crocksdb_get_pinned(db: *mut DBInstance,
+                               readopts: *const DBReadOptions,
+                               k: *const u8,
+                               kLen: size_t,
+                               err: *mut *mut c_char)
+                               -> *mut DBPinnableSlice;
+    pub fn crocksdb_get_pinned_cf(db: *mut DBInstance,
+                                  readopts: *const DBReadOptions,
+                                  cf_handle: *mut DBCFHandle,
+                                  k: *const u8,
+                                  kLen: size_t,
+                                  err: *mut *mut c_char)
+                                  -> *mut DBPinnableSlice;
+    pub fn crocksdb_pinnableslice_value(s: *const DBPinnableSlice,
+                                        valLen: *mut size_t)
+                                        -> *const u8;
+    pub fn crocksdb_pinnableslice_destroy(v: *mut DBPinnableSlice);
 }
 
 #[cfg(test)]
