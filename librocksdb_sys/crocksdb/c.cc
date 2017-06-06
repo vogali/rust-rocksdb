@@ -1494,6 +1494,11 @@ void crocksdb_block_based_options_set_cache_index_and_filter_blocks(
   options->rep.cache_index_and_filter_blocks = v;
 }
 
+void crocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(
+    crocksdb_block_based_table_options_t *options, unsigned char v) {
+  options->rep.cache_index_and_filter_blocks_with_high_priority = v;
+}
+
 void crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
     crocksdb_block_based_table_options_t* options, unsigned char v) {
   options->rep.pin_l0_filter_and_index_blocks_in_cache = v;
@@ -2089,7 +2094,8 @@ void crocksdb_options_set_fifo_compaction_options(
   opt->rep.compaction_options_fifo = fifo->rep;
 }
 
-void crocksdb_options_set_compaction_priority(crocksdb_options_t *opt, unsigned char priority) {
+void crocksdb_options_set_compaction_priority(crocksdb_options_t *opt,
+                                              unsigned char priority) {
   opt->rep.compaction_pri = static_cast<rocksdb::CompactionPri>(priority);
 }
 
