@@ -29,6 +29,8 @@
 #include "rocksdb/table.h"
 #include "rocksdb/rate_limiter.h"
 #include "rocksdb/utilities/backupable_db.h"
+#include "rocksdb/table_properties.h"
+#include "rocksdb/types.h"
 
 using rocksdb::Cache;
 using rocksdb::ColumnFamilyDescriptor;
@@ -83,6 +85,11 @@ using rocksdb::HistogramData;
 using rocksdb::PinnableSlice;
 using rocksdb::FilterBitsBuilder;
 using rocksdb::FilterBitsReader;
+using rocksdb::TablePropertiesCollectorFactory;
+using rocksdb::TablePropertiesCollector;
+using rocksdb::EntryType;
+using rocksdb::SequenceNumber;
+using rocksdb::UserCollectedProperties;
 
 using std::shared_ptr;
 
@@ -2188,6 +2195,103 @@ DB::RunManualCompaction
 custom cache
 table_properties_collectors
 */
+struct crocksdb_tablepropertiescollectorfactorycontext_t {
+    TablePropertiesCollectorFactory::Context rep;
+};
+
+struct crocksdb_tablepropertiescollector_t : public TablePropertiesCollector {
+    void *state_;
+    void (*destructor_)(void *);
+    void (*add_userkey_)(
+            void *,
+            const char *key, size_t key_length,
+            const char *value, size_t value_length,
+            int entry_type, uint64_t seq,
+            uint64_t file_size);
+    void (*finish_)(void *, char **keys, int *key_count, char **value, int *value_count);
+    void (*readable_properties_)(void *);
+    unsigned char need_compact_;
+    const char *(*name_)(void *);
+
+    virtual ~crocksdb_tablepropertiescollector_t() {
+        (*destructor_)(state_);
+    }
+
+    virtual Status AddUserKey(const Slice &key, const Slice &value,
+                              EntryType type, SequenceNumber seq,
+                              uint64_t file_size) override {
+        // For backwards-compatibility.
+        (*add_userkey_)(
+                state_,
+                key.data(), key.size(),
+                value.data(), value.size(),
+                type,
+                seq,
+                file_size);
+        return Status::OK();
+    }
+
+    virtual Status Finish(UserCollectedProperties *properties) override {
+        char **keys, **values;
+        int keys_count, value_count;
+        (*finish_)(state_, keys, &keys_count, values, &value_count);
+        if (keys == NULL || values == NULL) {
+            return Status::OK();
+        }
+        assert(keys_count == value_count);
+        for (int i = 0; i < keys_count; i++) {
+            properties->insert(std::make_pair(std::string(keys[i]), std::string(values[i])));
+            free(keys[i]);
+            free(values[i]);
+        }
+        // free the memory
+        free(keys);
+        free(values);
+        return Status::OK();
+    }
+
+    virtual UserCollectedProperties GetReadableProperties() const override {
+        (*readable_properties_)(state_);
+        return UserCollectedProperties{};
+    }
+
+    virtual bool NeedCompact() const override { return need_compact_; }
+
+    virtual const char *Name() const override {
+        return (*name_)(state_);
+    }
+};
+
+struct crocksdb_tablepropertiescollectorfactory_t : public TablePropertiesCollectorFactory {
+    void *state_;
+    void (*destructor_)(void *);
+    crocksdb_tablepropertiescollector_t *(*create_table_properties_collector_)(
+            void *, crocksdb_tablepropertiescollectorfactorycontext_t *context);
+    const char *(*name_)(void *);
+
+    virtual ~crocksdb_tablepropertiescollectorfactory_t() { (*destructor_)(state_); }
+
+    virtual TablePropertiesCollector *CreateTablePropertiesCollector(
+            TablePropertiesCollectorFactory::Context context) {
+        crocksdb_tablepropertiescollectorfactorycontext_t ccontext;
+        ccontext.rep = context;
+        TablePropertiesCollector *tpc = (*create_table_properties_collector_)(state_, &ccontext);
+        return tpc;
+    }
+
+    virtual const char *Name() const override { return (*name_)(state_); }
+};
+
+void crocksdb_tablepropertiescollector_set_need_compact(
+        crocksdb_tablepropertiescollector_t *collector,
+        unsigned char whether_need_compact) {
+    collector->need_compact_ = whether_need_compact;
+}
+
+void crocksdb_options_add_table_properities_collector_factory(
+        crocksdb_options_t *opt, crocksdb_tablepropertiescollectorfactory_t *factory) {
+    opt->rep.table_properties_collector_factories.push_back(std::shared_ptr<TablePropertiesCollectorFactory>(factory));
+}
 
 crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
     void* state,
