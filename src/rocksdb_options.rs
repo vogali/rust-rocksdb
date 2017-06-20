@@ -205,9 +205,11 @@ impl ReadOptions {
             crocksdb_ffi::crocksdb_readoptions_set_iterate_upper_bound(self.inner,
                                                                        self.upper_bound
                                                                            .as_ref()
+                                                                           .unwrap()
                                                                            .as_ptr(),
                                                                        self.upper_bound
                                                                            .as_ref()
+                                                                           .unwrap()
                                                                            .len());
         }
     }
