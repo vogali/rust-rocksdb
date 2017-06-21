@@ -1181,9 +1181,8 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_tablepropertiescollectorfactory_t*
 crocksdb_tablepropertiescollectorfactory_create(
         void* state, void (*destructor)(void*),
         crocksdb_tablepropertiescollector_t* (*create_table_properties_collector)(
-                void*,crocksdb_tablepropertiescollectorfactorycontext_t *context),
+                void*,uint32_t),
         const char* (*name)(void*));
-
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_add_table_properities_collector_factory(
         crocksdb_options_t*, crocksdb_tablepropertiescollectorfactory_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_tablepropertiescollectorfactory_destroy(
@@ -1199,7 +1198,7 @@ crocksdb_tablepropertiescollector_create(
                 int type,
                 uint64_t seq,
                 uint64_t file_size),
-        void (*finish)(void *,char** keys, int* key_count, char** values, int* value_count),
+        void (*finish)(void *,char*** keys, int* pair_count, char*** values),
         void (*readable_properties)(void *),
         const char *(*name)(void *));
 
