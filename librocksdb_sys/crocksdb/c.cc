@@ -138,6 +138,16 @@ struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
 };
 
+struct crocksdb_usercollectedproperties_t {
+  UserCollectedProperties* props;
+};
+
+void crocksdb_add_property(crocksdb_usercollectedproperties_t* props, 
+            const char* key, size_t key_length, 
+            const char* value, size_t value_length) {
+    props->props->insert(std::make_pair(std::string(key,key_length), std::string(value,value_length)));
+}
+
 struct crocksdb_compactionfilter_t : public CompactionFilter {
   void* state_;
   void (*destructor_)(void*);
@@ -2207,7 +2217,7 @@ struct crocksdb_tablepropertiescollector_t : public TablePropertiesCollector {
             const char *value, size_t value_length,
             int entry_type, uint64_t seq,
             uint64_t file_size);
-    void (*finish_)(void *, char ***keys, int *pair_count, char ***value);
+    void (*finish_)(void *, crocksdb_usercollectedproperties_t* props);
     void (*readable_properties_)(void *);
     unsigned char need_compact_;
     const char *(*name_)(void *);
@@ -2230,20 +2240,9 @@ struct crocksdb_tablepropertiescollector_t : public TablePropertiesCollector {
     }
 
     virtual Status Finish(UserCollectedProperties *properties) override {
-        char **keys, **values;
-        int pair_count;
-        (*finish_)(state_, &keys, &pair_count, &values);
-        if (nullptr == keys || nullptr == values) {
-            return Status::OK();
-        }
-        for (int i = 0; i < pair_count; i++) {
-            properties->insert(std::make_pair(std::string(keys[i]), std::string(values[i])));
-            free(keys[i]);
-            free(values[i]);
-        }
-        // free the memory
-        free(keys);
-        free(values);
+        crocksdb_usercollectedproperties_t props;
+        props.props = properties;
+        (*finish_)(state_, &props);
         return Status::OK();
     }
 
@@ -2272,7 +2271,7 @@ struct crocksdb_tablepropertiescollectorfactory_t : public TablePropertiesCollec
             const char *value, size_t value_length,
             int entry_type, uint64_t seq,
             uint64_t file_size);
-    void (*finish_collector_)(void *, char ***keys, int *pair_count, char ***value);
+    void (*finish_collector_)(void *, crocksdb_usercollectedproperties_t* props);
     void (*readable_properties_collector_)(void *);
     unsigned char need_compact_collector_;
     const char *(*name_collector_)(void *);
@@ -2316,7 +2315,7 @@ crocksdb_tablepropertiescollector_t *crocksdb_tablepropertiescollector_create(
                 const char *value, size_t value_length,
                 int entry_type, uint64_t seq,
                 uint64_t file_size),
-        void (*finish)(void *, char ***keys, int *pair_count, char ***values),
+        void (*finish)(void *, crocksdb_usercollectedproperties_t* props),
         void (*readable_properties)(void *),
         const char *(*name)(void *)) {
     crocksdb_tablepropertiescollector_t *result = new crocksdb_tablepropertiescollector_t;
@@ -2346,7 +2345,7 @@ crocksdb_tablepropertiescollectorfactory_t *crocksdb_tablepropertiescollectorfac
             const char *value, size_t value_length,
             int entry_type, uint64_t seq,
             uint64_t file_size),
-        void (*finish_collector)(void *, char ***keys, int *pair_count, char ***value),
+        void (*finish_collector)(void *, crocksdb_usercollectedproperties_t* props),
         void (*readable_properties_collector)(void *),
         unsigned char need_compact_collector,
         const char *(*name_collector)(void *)) {
@@ -3098,4 +3097,6 @@ const char* crocksdb_pinnableslice_value(const crocksdb_pinnableslice_t* v,
   *vlen = v->rep.size();
   return v->rep.data();
 }
+
+
 }  // end extern "C"

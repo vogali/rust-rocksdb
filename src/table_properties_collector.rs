@@ -3,10 +3,7 @@ use libc::{c_void, c_char, c_int, size_t};
 use std::ffi::CString;
 use std::slice;
 use std::mem;
-use std::mem::size_of;
 use std::collections::HashMap;
-use std::ptr;
-use libc::malloc;
 
 pub trait TablePropertiesCollector {
     fn add_userkey(&mut self, key: &[u8], value: &[u8], entry_type: EntryType);
@@ -48,32 +45,15 @@ pub extern "C" fn add_userkey(collector: *mut c_void,
 }
 
 pub extern "C" fn finish(collector: *mut c_void,
-                     c_keys: *mut *mut *mut c_char,
-                     pair_count  : *mut c_int,
-                     c_values: *mut *mut *mut c_char) {
+                     usercollectedproperties: *mut c_void) {
     unsafe {
         let collector = &mut *(collector as *mut TablePropertiesCollectorProxy);
         let props = collector.collector.finish();
-        let count = props.len();
-        let keys = malloc(size_of::<*mut c_char>() * count) as *mut *mut c_char;
-        let values = malloc(size_of::<*mut c_char>() * count) as *mut *mut c_char;
 
-        for (i, (key, value)) in props.iter().enumerate() {
-            *keys.offset(i as isize) = malloc(size_of::<c_char>() * (key.len() + 1)) as *mut c_char;
-            ptr::copy(key.as_bytes().as_ptr() as *const c_char,
-                             *keys.offset(i as isize),
-                             key.len());
-            *(*keys.offset(i as isize)).offset(key.len() as isize) = 0;
-
-            *values.offset(i as isize) = malloc(size_of::<c_char>() * (value.len() + 1)) as *mut c_char;
-            ptr::copy(value.as_bytes().as_ptr() as *const c_char,
-                             *values.offset(i as isize),
-                             value.len());
-            *(*values.offset(i as isize)).offset(value.len() as isize) = 0;
+        for (key, value) in props {
+            crocksdb_ffi::crocksdb_add_property(usercollectedproperties, key.as_ptr(), key.len(),
+             value.as_ptr(), value.len());
         }
-        *c_keys = keys;
-        *c_values = values;
-        *pair_count = count as c_int;
     }
 }
 

@@ -47,7 +47,6 @@ pub enum DBCompactOptions {}
 pub enum DBPinnableSlice {}
 pub enum DBTablePropertiesCollector {}
 pub enum DBTablePropertiesCollectorFactory {}
-pub enum DBTablePropertiesCollectorFactoryContext {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -720,9 +719,7 @@ extern "C" {
                                                                                u64,
                                                                                u64),
                                                     finish: extern "C" fn(*mut c_void,
-                                                                          *mut *mut *mut c_char,
-                                                                          *mut c_int,
-                                                                          *mut *mut *mut c_char),
+                                                                          *mut c_void),
                                                     readable_properties: extern "C" fn(*mut c_void),
                                                     name: extern "C" fn(*mut c_void) -> *const c_char)
                                                     -> *mut DBTablePropertiesCollector;
@@ -745,9 +742,7 @@ extern "C" {
                                                                                u64,
                                                                                u64),
                                                     collector_finish: extern "C" fn(*mut c_void,
-                                                                          *mut *mut *mut c_char,
-                                                                          *mut c_int,
-                                                                          *mut *mut *mut c_char),
+                                                                                    *mut c_void),
                                                     collector_readable_properties: extern "C" fn(*mut c_void),
                                                     collector_name: extern "C" fn(*mut c_void) -> *const c_char)
                                                     -> *mut DBTablePropertiesCollectorFactory;
@@ -868,6 +863,11 @@ extern "C" {
                                         valLen: *mut size_t)
                                         -> *const u8;
     pub fn crocksdb_pinnableslice_destroy(v: *mut DBPinnableSlice);
+    pub fn crocksdb_add_property(props: *mut c_void,
+                                key: *const u8,
+                                key_length: size_t,
+                                value: *const u8,
+                                value_length: size_t)-> c_void;
 }
 
 #[cfg(test)]
