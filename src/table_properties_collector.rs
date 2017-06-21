@@ -44,7 +44,7 @@ pub extern "C" fn add_userkey(collector: *mut c_void,
                      _: u64,
                      _: u64) {
     unsafe {
-        panic!("add_userkey");
+        // panic!("add_userkey");
         let collector = &mut *(collector as *mut TablePropertiesCollectorProxy);
         let key = slice::from_raw_parts(key, key_length);
         let value = slice::from_raw_parts(value, value_length);

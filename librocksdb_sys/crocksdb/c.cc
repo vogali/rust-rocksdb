@@ -10,6 +10,7 @@
 #include "rocksdb/c.h"
 
 #include <stdlib.h>
+#include <assert.h>
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
@@ -2264,17 +2265,17 @@ struct crocksdb_tablepropertiescollectorfactory_t : public TablePropertiesCollec
     crocksdb_tablepropertiescollector_t *(*create_table_properties_collector_)(
             void *, uint32_t);
     const char *(*name_)(void *);
-    void (*destructor_collector)(void *);
-    void (*add_userkey_collector)(
+    void (*destructor_collector_)(void *);
+    void (*add_userkey_collector_)(
             void *,
             const char *key, size_t key_length,
             const char *value, size_t value_length,
             int entry_type, uint64_t seq,
             uint64_t file_size);
-    void (*finish_collector)(void *, char ***keys, int *pair_count, char ***value);
-    void (*readable_properties_collector)(void *);
-    unsigned char need_compact_collector;
-    const char *(*name_collector)(void *);
+    void (*finish_collector_)(void *, char ***keys, int *pair_count, char ***value);
+    void (*readable_properties_collector_)(void *);
+    unsigned char need_compact_collector_;
+    const char *(*name_collector_)(void *);
 
     virtual ~crocksdb_tablepropertiescollectorfactory_t() { (*destructor_)(state_); }
 
@@ -2283,12 +2284,13 @@ struct crocksdb_tablepropertiescollectorfactory_t : public TablePropertiesCollec
         void* collector_proxy = (*create_table_properties_collector_)(state_, context.column_family_id);
         crocksdb_tablepropertiescollector_t *result = new crocksdb_tablepropertiescollector_t;
         result->state_ = collector_proxy;
-        result->destructor_ = destructor_collector;
-        result->add_userkey_ = add_userkey_collector;
-        result->finish_ = finish_collector;
-        result->readable_properties_ = readable_properties_collector;
+        result->destructor_ = destructor_collector_;
+        result->add_userkey_ = add_userkey_collector_;
+        // assert(0);
+        result->finish_ = finish_collector_;
+        result->readable_properties_ = readable_properties_collector_;
         result->need_compact_ = false;
-        result->name_=name_collector;
+        result->name_=name_collector_;
         return result;
     }
 
@@ -2337,14 +2339,31 @@ crocksdb_tablepropertiescollectorfactory_t *crocksdb_tablepropertiescollectorfac
         void *state, void (*destructor)(void *),
         crocksdb_tablepropertiescollector_t *(*create_table_properties_collector)(
                 void *, uint32_t),
-        const char *(*name)(void *)) {
+        const char *(*name)(void *),
+        void (*destructor_collector)(void *),
+        void (*add_userkey_collector)(
+            void *,
+            const char *key, size_t key_length,
+            const char *value, size_t value_length,
+            int entry_type, uint64_t seq,
+            uint64_t file_size),
+        void (*finish_collector)(void *, char ***keys, int *pair_count, char ***value),
+        void (*readable_properties_collector)(void *),
+        unsigned char need_compact_collector,
+        const char *(*name_collector)(void *)) {
     crocksdb_tablepropertiescollectorfactory_t *result =
             new crocksdb_tablepropertiescollectorfactory_t;
     result->state_ = state;
     result->destructor_ = destructor;
     result->create_table_properties_collector_ = create_table_properties_collector;
-
     result->name_ = name;
+
+    result->destructor_collector_= destructor_collector;
+    result->add_userkey_collector_ = add_userkey_collector;
+    result->finish_collector_ = finish_collector;
+    result->readable_properties_collector_ = readable_properties_collector;
+    result->need_compact_collector_ = false;
+    result->name_collector_=name_collector;
     return result;
 }
 
