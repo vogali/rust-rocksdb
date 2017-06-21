@@ -9,7 +9,6 @@
 
 #include "rocksdb/c.h"
 
-#include <iostream>
 #include <stdlib.h>
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
