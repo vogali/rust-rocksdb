@@ -62,6 +62,8 @@ impl Drop for CollectorFactory {
 
 #[test]
 fn test_table_properties_collector_factory() {
+    use std::mem;
+
     let path = TempDir::new("_rust_rocksdb_collectortest").expect("");
     let mut opts = Options::new();
     opts.add_table_properties_collector_factory("test",
@@ -79,6 +81,6 @@ fn test_table_properties_collector_factory() {
     }
     db.flush(true).unwrap();
     drop(db);
-
-    
+    println!("path is {:?}", path);
+    mem::forget(path);  
 }

@@ -17,8 +17,8 @@ pub trait TablePropertiesCollector {
 
 #[repr(C)]
 pub struct TablePropertiesCollectorProxy {
-    name: CString,
-    collector: Box<TablePropertiesCollector>,
+    pub name: CString,
+    pub collector: Box<TablePropertiesCollector>,
 }
 
 
@@ -45,10 +45,12 @@ pub extern "C" fn add_userkey(collector: *mut c_void,
                      _: u64) {
     unsafe {
         // panic!("add_userkey");
-        let collector = &mut *(collector as *mut TablePropertiesCollectorProxy);
+        println!("proxy => {:?}", collector);
+        let proxy = &mut *(collector as *mut TablePropertiesCollectorProxy);
+        println!("name => {:?}", proxy.name);
         let key = slice::from_raw_parts(key, key_length);
         let value = slice::from_raw_parts(value, value_length);
-        collector.collector.add_userkey(key, value, mem::transmute(entry_type))
+        proxy.collector.add_userkey(key, value, mem::transmute(entry_type))
     }
 }
 

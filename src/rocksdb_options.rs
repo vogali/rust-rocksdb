@@ -399,12 +399,14 @@ impl Options {
                 Ok(s) => s,
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
-            self.collector_factory = Some(try!(new_table_properties_collector_factory(c_name, collector_factory)));
+            //self.collector_factory = Some(try!(new_table_properties_collector_factory(c_name, collector_factory)));
+            let a = new_table_properties_collector_factory(c_name, collector_factory);
             crocksdb_ffi::crocksdb_options_add_table_properities_collector_factory(self.inner,
-                                                                 self.collector_factory
+                                                                 a
                                                                      .as_ref()
                                                                      .unwrap()
                                                                      .inner);
+            mem::forget(a);
             Ok(())
         }
     }
