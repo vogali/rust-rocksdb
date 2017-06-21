@@ -14,8 +14,7 @@
 //
 
 use compaction_filter::{CompactionFilter, new_compaction_filter, CompactionFilterHandle};
-//#
-use table_properties_collector::{TablePropertiesCollector,new_table_properties_collector,TablePropertiesCollectorHandle};
+use table_properties_collector::{TablePropertiesCollector};
 use table_properties_collector_factory::{TablePropertiesCollectorFactory,new_table_properties_collector_factory,TablePropertiesCollectorFactoryHandle};
 use comparator::{self, ComparatorCallback, compare_callback};
 
@@ -298,7 +297,6 @@ impl Drop for CompactOptions {
 pub struct Options {
     pub inner: *mut DBOptions,
     filter: Option<CompactionFilterHandle>,
-    collector: Option<TablePropertiesCollectorHandle>,
     collector_factory: Option<TablePropertiesCollectorFactoryHandle>,
 }
 
@@ -318,7 +316,6 @@ impl Default for Options {
             Options {
                 inner: opts,
                 filter: None,
-                collector: None,
                 collector_factory: None,
             }
         }
@@ -336,7 +333,6 @@ impl Options {
         Options {
             inner: inner,
             filter: None,
-            collector: None,
             collector_factory: None,
         }
     }
@@ -399,32 +395,13 @@ impl Options {
                 Ok(s) => s,
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
-            //self.collector_factory = Some(try!(new_table_properties_collector_factory(c_name, collector_factory)));
-            let a = new_table_properties_collector_factory(c_name, collector_factory);
+            let factory = new_table_properties_collector_factory(c_name, collector_factory);
             crocksdb_ffi::crocksdb_options_add_table_properities_collector_factory(self.inner,
-                                                                 a
+                                                                 factory
                                                                      .as_ref()
                                                                      .unwrap()
                                                                      .inner);
-            mem::forget(a);
-            Ok(())
-        }
-    }
-
-    //#
-    pub fn set_table_properties_collector<S>(&mut self,
-                                    name: S,
-                                    need_compact: bool,
-                                    collector: Box<TablePropertiesCollector>)
-                                    -> Result<(), String>
-        where S: Into<Vec<u8>>
-    {
-        unsafe {
-            let c_name = match CString::new(name) {
-                Ok(s) => s,
-                Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
-            };
-            self.collector = Some(try!(new_table_properties_collector(c_name, need_compact, collector)));
+            mem::forget(factory);
             Ok(())
         }
     }

@@ -13,15 +13,11 @@ pub trait TablePropertiesCollector {
     fn finish(&mut self) -> HashMap<String, String>;
 }
 
-
-
 #[repr(C)]
 pub struct TablePropertiesCollectorProxy {
     pub name: CString,
     pub collector: Box<TablePropertiesCollector>,
 }
-
-
 
 pub extern "C" fn name(collector: *mut c_void) -> *const c_char {
     unsafe { 
@@ -44,10 +40,7 @@ pub extern "C" fn add_userkey(collector: *mut c_void,
                      _: u64,
                      _: u64) {
     unsafe {
-        // panic!("add_userkey");
-        println!("proxy => {:?}", collector);
         let proxy = &mut *(collector as *mut TablePropertiesCollectorProxy);
-        println!("name => {:?}", proxy.name);
         let key = slice::from_raw_parts(key, key_length);
         let value = slice::from_raw_parts(value, value_length);
         proxy.collector.add_userkey(key, value, mem::transmute(entry_type))
@@ -88,35 +81,4 @@ pub extern "C" fn readable_properties(collector: *mut c_void) {
     unsafe {
         Box::from_raw(collector as *mut TablePropertiesCollectorProxy);
     }
-}
-
-pub struct TablePropertiesCollectorHandle {
-    pub inner: *mut DBTablePropertiesCollector,
-}
-
-impl Drop for TablePropertiesCollectorHandle {
-    fn drop(&mut self) {
-        unsafe {    
-            crocksdb_ffi::crocksdb_tablepropertiescollector_destroy(self.inner);
-        }
-    }
-}
-
-
-pub unsafe fn new_table_properties_collector(c_name: CString,
-                                    need_compact: bool,
-                                    f: Box<TablePropertiesCollector>)
-                                    -> Result<TablePropertiesCollectorHandle, String> {
-    let proxy = Box::into_raw(Box::new(TablePropertiesCollectorProxy {
-        name: c_name,
-        collector: f,
-    }));
-    let collector = crocksdb_ffi::crocksdb_tablepropertiescollector_create(proxy as *mut c_void,
-                                                                destructor,
-                                                                add_userkey,
-                                                                finish,
-                                                                readable_properties,
-                                                                name);
-    crocksdb_ffi::crocksdb_tablepropertiescollector_set_need_compact(collector, need_compact);
-    Ok(TablePropertiesCollectorHandle { inner: collector })
 }

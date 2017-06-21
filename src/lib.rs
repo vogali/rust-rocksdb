@@ -26,12 +26,10 @@ pub mod merge_operator;
 pub mod comparator;
 mod compaction_filter;
 mod slice_transform;
-//#
 mod table_properties_collector;
 mod table_properties_collector_factory;
 
 pub use compaction_filter::CompactionFilter;
-//#
 pub use table_properties_collector::{TablePropertiesCollector};
 pub use table_properties_collector_factory::TablePropertiesCollectorFactory;
 

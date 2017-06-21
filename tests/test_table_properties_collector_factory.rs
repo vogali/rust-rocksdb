@@ -16,7 +16,6 @@ use tempdir::TempDir;
 use std::collections::HashMap;
 use rocksdb::crocksdb_ffi::EntryType;
 
-
 struct CollectorFactory {
     _cnt: u64,
 }
@@ -27,7 +26,6 @@ struct Collector {
 
 impl TablePropertiesCollector for Collector {
     fn add_userkey(&mut self, key: &[u8], value: &[u8], entry_type: EntryType){
-        println!("add user key test");
         if key[0]==b'A'{
             self.cnt=self.cnt+1;
         }

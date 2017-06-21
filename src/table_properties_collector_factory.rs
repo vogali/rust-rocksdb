@@ -1,10 +1,7 @@
 use crocksdb_ffi::{self, DBTablePropertiesCollectorFactory};
 use libc::{c_void, c_char};
 use std::ffi::CString;
-use table_properties_collector::{self,TablePropertiesCollector};
-use table_properties_collector::TablePropertiesCollectorProxy;
-
-
+use table_properties_collector::{self,TablePropertiesCollector,TablePropertiesCollectorProxy};
 
 pub trait TablePropertiesCollectorFactory {
     fn create_table_properties_collector(&mut self, column_family_id: u32) -> Box<TablePropertiesCollector>;
@@ -32,18 +29,11 @@ extern "C" fn create_table_properties_collector(
                 {
     unsafe { 
         let collector_factory = &mut *(collector_factory as *mut TablePropertiesCollectorFactoryProxy);
-        // let collector = collector_factory.create_table_properties_collector();
-        // let collector_proxy = TablePropertiesCollectorProxy {
-        //     name: collector_factory.name.clone();
-        //     collector: collector;
-        // }
-        // Box::into_raw(Box::new(collector_factory)) as *mut c_void
         let proxy = Box::new(TablePropertiesCollectorProxy {
             name: collector_factory.name.clone(),
             collector: collector_factory.collector_factory.create_table_properties_collector(context),
         });
         Box::into_raw(proxy) as *mut c_void
-        // Box::into_raw(collector_factory.collector_factory.create_table_properties_collector(context)) as *mut c_void
     }
 }
 

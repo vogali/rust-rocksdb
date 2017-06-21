@@ -2286,7 +2286,6 @@ struct crocksdb_tablepropertiescollectorfactory_t : public TablePropertiesCollec
         result->state_ = collector_proxy;
         result->destructor_ = destructor_collector_;
         result->add_userkey_ = add_userkey_collector_;
-        // assert(0);
         result->finish_ = finish_collector_;
         result->readable_properties_ = readable_properties_collector_;
         result->need_compact_ = false;

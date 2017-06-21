@@ -45,7 +45,6 @@ pub enum DBRateLimiter {}
 pub enum DBLogger {}
 pub enum DBCompactOptions {}
 pub enum DBPinnableSlice {}
-//#
 pub enum DBTablePropertiesCollector {}
 pub enum DBTablePropertiesCollectorFactory {}
 pub enum DBTablePropertiesCollectorFactoryContext {}
@@ -249,7 +248,6 @@ extern "C" {
                                                             memtable_memory_budget: c_int);
     pub fn crocksdb_options_set_compaction_filter(options: *mut DBOptions,
                                                   filter: *mut DBCompactionFilter);
-    //#
     pub fn crocksdb_options_add_table_properities_collector_factory(options: *mut DBOptions,
                                                   collector_factory: *mut DBTablePropertiesCollectorFactory);                                            
     pub fn crocksdb_options_set_create_if_missing(options: *mut DBOptions, v: bool);
@@ -711,7 +709,6 @@ extern "C" {
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
 
     // Table properties collector
-    //#
     pub fn crocksdb_tablepropertiescollector_create(state: *mut c_void,
                                                     destructor: extern "C" fn(*mut c_void),
                                                     add_userkey: extern "C" fn(*mut c_void,
@@ -734,7 +731,6 @@ extern "C" {
     pub fn crocksdb_tablepropertiescollector_destroy(collector: *mut DBTablePropertiesCollector);
 
     // Table properties collector factory
-    //#
     pub fn crocksdb_tablepropertiescollectorfactory_create(state: *mut c_void,
                                                     destructor: extern "C" fn(*mut c_void),
                                                     create_table_properties_collector: extern "C" fn(*mut c_void, u32)-> *mut c_void,
