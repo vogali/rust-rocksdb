@@ -32,3 +32,9 @@ tempdir = "0.3.4"
 
 [dependencies.librocksdb_sys]
 path = "librocksdb_sys"
+
+[profile.dev]
+opt-level = 1
+
+[profile.test]
+opt-level = 1

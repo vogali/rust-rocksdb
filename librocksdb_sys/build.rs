@@ -22,7 +22,6 @@ fn main() {
         .flag("-O2")
         .compile("libcrocksdb.a");
 
-        println!("cargo:rustc-link-lib=static=crocksdb");
         println!("cargo:rustc-link-lib=rocksdb");
 
         return;

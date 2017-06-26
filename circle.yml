@@ -8,7 +8,7 @@ machine:
     CPPFLAGS: "-I$HOME/.local/include"
     CXXFLAGS: "-I$HOME/.local/include"
     PKG_CONFIG_PATH: "$PKG_CONFIG_PATH:$HOME/.local/lib/pkgconfig"
-    RUSTC_DATE: "2017-03-28"
+    RUSTC_DATE: "2017-06-20"
     LOCAL_PREFIX: "$HOME/.local"
     # used by cargo
     LIBRARY_PATH: "$LIBRARY_PATH:$HOME/.local/lib"
@@ -20,7 +20,8 @@ machine:
     - |
       sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
       sudo apt-get update -y;
-      sudo apt-get install -y g++-4.8 zlib1g-dev libbz2-dev libsnappy-dev curl libdw-dev libelf-dev elfutils binutils-dev
+      sudo apt-get install -y g++-4.8 zlib1g-dev libbz2-dev libsnappy-dev curl libdw-dev libelf-dev elfutils binutils-dev clang
+    - echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
   post:
     # Fixes: cargo under CircleCI
     - sed -i 's/github/git-non-exist-hub/g' ~/.gitconfig
@@ -53,6 +54,7 @@ dependencies:
       fi
   post:
     # cargo test also use debug
+    - cargo fmt && git diff-index --quiet HEAD -- || (echo please make format and run tests before creating a PR!; git diff HEAD; exit 1)
     - cargo build -v:
         timeout: 1800
     - cargo test -v --no-run:
@@ -61,5 +63,5 @@ dependencies:
 
 test:
   override:
-    - cargo fmt && git diff-index --quiet HEAD -- || (echo please make format and run tests before creating a pr!; git diff HEAD; exit 1)
     - cargo test -- --nocapture
+    - RUSTFLAGS="-Z sanitizer=leak" cargo +nightly test --target x86_64-unknown-linux-gnu -- -q 2>&1 | asan_symbolize -d
