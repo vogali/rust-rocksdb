@@ -8,7 +8,6 @@ machine:
     CPPFLAGS: "-I$HOME/.local/include"
     CXXFLAGS: "-I$HOME/.local/include"
     PKG_CONFIG_PATH: "$PKG_CONFIG_PATH:$HOME/.local/lib/pkgconfig"
-    RUSTC_DATE: "2017-06-20"
     LOCAL_PREFIX: "$HOME/.local"
     # used by cargo
     LIBRARY_PATH: "$LIBRARY_PATH:$HOME/.local/lib"
@@ -36,10 +35,10 @@ dependencies:
     - |
       if [[ ! -e $HOME/.cargo ]]; then
         curl https://sh.rustup.rs -sSf |
-          sh -s -- --no-modify-path --default-toolchain "nightly-${RUSTC_DATE}" -y;
-        rustup default "nightly-${RUSTC_DATE}";
+          sh -s -- --no-modify-path --default-toolchain nightly -y;
+        rustup default nightly;
       else
-        rustup default "nightly-${RUSTC_DATE}";
+        rustup default nightly;
       fi
     - make -f travis-build/Makefile prepare-rustfmt
     - |
