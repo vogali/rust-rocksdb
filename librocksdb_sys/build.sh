@@ -123,11 +123,11 @@ function compile_rocksdb() {
     if [[ -f librocksdb.a ]]; then
         return
     fi
-    version=9467eb6141a6043f9ab1f225b9096e79104a3952
-    vernum=9467eb6141a6043f9ab1f225b9096e79104a3952
+    version=c956c0d19bab5d9e3ae8416993f5a6779dc1eea2
+    vernum=c956c0d19bab5d9e3ae8416993f5a6779dc1eea2
     echo building rocksdb-$version
     rm -rf rocksdb-$vernum
-    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz 57502cadb9eb4e316b57cedc9ea3aeb1
+    download https://github.com/zhangjinpeng/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz ba5cb1916e1b66ccdcdb666645ee4e03
     tar xf rocksdb-$version.tar.gz
     wd=`pwd`
     cd rocksdb-$vernum
