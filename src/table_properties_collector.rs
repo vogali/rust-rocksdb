@@ -1,9 +1,9 @@
-use crocksdb_ffi::{self, DBTablePropertiesCollector,EntryType};
+use crocksdb_ffi::{self, EntryType};
 use libc::{c_void, c_char, c_int, size_t};
-use std::ffi::CString;
-use std::slice;
-use std::mem;
 use std::collections::HashMap;
+use std::ffi::CString;
+use std::mem;
+use std::slice;
 
 pub trait TablePropertiesCollector {
     fn add_userkey(&mut self, key: &[u8], value: &[u8], entry_type: EntryType);
@@ -17,9 +17,7 @@ pub struct TablePropertiesCollectorProxy {
 }
 
 pub extern "C" fn name(collector: *mut c_void) -> *const c_char {
-    unsafe { 
-        (*(collector as *mut TablePropertiesCollectorProxy)).name.as_ptr() 
-    }
+    unsafe { (*(collector as *mut TablePropertiesCollectorProxy)).name.as_ptr() }
 }
 
 pub extern "C" fn destructor(collector: *mut c_void) {
@@ -29,13 +27,13 @@ pub extern "C" fn destructor(collector: *mut c_void) {
 }
 
 pub extern "C" fn add_userkey(collector: *mut c_void,
-                     key: *const u8,
-                     key_length: size_t,
-                     value: *const u8,
-                     value_length: size_t,
-                     entry_type: c_int,
-                     _: u64,
-                     _: u64) {
+                              key: *const u8,
+                              key_length: size_t,
+                              value: *const u8,
+                              value_length: size_t,
+                              entry_type: c_int,
+                              _: u64,
+                              _: u64) {
     unsafe {
         let proxy = &mut *(collector as *mut TablePropertiesCollectorProxy);
         let key = slice::from_raw_parts(key, key_length);
@@ -44,21 +42,23 @@ pub extern "C" fn add_userkey(collector: *mut c_void,
     }
 }
 
-pub extern "C" fn finish(collector: *mut c_void,
-                     usercollectedproperties: *mut c_void) {
+pub extern "C" fn finish(collector: *mut c_void, usercollectedproperties: *mut c_void) {
     unsafe {
         let collector = &mut *(collector as *mut TablePropertiesCollectorProxy);
         let props = collector.collector.finish();
 
         for (key, value) in props {
-            crocksdb_ffi::crocksdb_add_property(usercollectedproperties, key.as_ptr(), key.len(),
-             value.as_ptr(), value.len());
+            crocksdb_ffi::crocksdb_add_property(usercollectedproperties,
+                                                key.as_ptr(),
+                                                key.len(),
+                                                value.as_ptr(),
+                                                value.len());
         }
     }
 }
 
-pub extern "C" fn readable_properties(collector: *mut c_void) {
-    unsafe {
-        Box::from_raw(collector as *mut TablePropertiesCollectorProxy);
-    }
+pub extern "C" fn readable_properties(_: *mut c_void) {
+    // unsafe {
+    //     // Box::from_raw(collector as *mut TablePropertiesCollectorProxy);
+    // }
 }

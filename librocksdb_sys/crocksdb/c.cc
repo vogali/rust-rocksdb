@@ -128,7 +128,6 @@ struct crocksdb_livefiles_t       { std::vector<LiveFileMetaData> rep; };
 struct crocksdb_column_family_handle_t  { ColumnFamilyHandle* rep; };
 struct crocksdb_envoptions_t      { EnvOptions        rep; };
 struct crocksdb_ingestexternalfileoptions_t  { IngestExternalFileOptions rep; };
-struct crocksdb_tablepropertiescollectorfactorycontext_t {TablePropertiesCollectorFactory::Context rep;};
 struct crocksdb_sstfilewriter_t   { SstFileWriter*    rep; };
 struct crocksdb_ratelimiter_t     { RateLimiter*      rep; };
 struct crocksdb_histogramdata_t   { HistogramData     rep; };
@@ -2280,16 +2279,20 @@ struct crocksdb_tablepropertiescollectorfactory_t : public TablePropertiesCollec
 
     virtual TablePropertiesCollector *CreateTablePropertiesCollector(
             TablePropertiesCollectorFactory::Context context) {
-        void* collector_proxy = (*create_table_properties_collector_)(state_, context.column_family_id);
-        crocksdb_tablepropertiescollector_t *result = new crocksdb_tablepropertiescollector_t;
-        result->state_ = collector_proxy;
-        result->destructor_ = destructor_collector_;
-        result->add_userkey_ = add_userkey_collector_;
-        result->finish_ = finish_collector_;
-        result->readable_properties_ = readable_properties_collector_;
-        result->need_compact_ = false;
-        result->name_=name_collector_;
-        return result;
+      // printf("enter CreateTablePropertiesCollector\n");
+      void *collector_proxy = (*create_table_properties_collector_)(
+          state_, context.column_family_id);
+      crocksdb_tablepropertiescollector_t *result =
+          new crocksdb_tablepropertiescollector_t;
+      result->state_ = collector_proxy;
+      result->destructor_ = destructor_collector_;
+      result->add_userkey_ = add_userkey_collector_;
+      result->finish_ = finish_collector_;
+      result->readable_properties_ = readable_properties_collector_;
+      result->need_compact_ = false;
+      result->name_ = name_collector_;
+      // printf("leave CreateTablePropertiesCollector\n");
+      return result;
     }
 
     virtual const char *Name() const override { return (*name_)(state_); }
@@ -2369,7 +2372,6 @@ void crocksdb_tablepropertiescollectorfactory_destroy(
         crocksdb_tablepropertiescollectorfactory_t *factory) {
     delete factory;
 }
-
 
 crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
     void* state,

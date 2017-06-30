@@ -62,6 +62,5 @@ fn test_table_properties_collector_factory() {
     }
     db.flush(true).unwrap();
     drop(db);
-    println!("path is {:?}", path);
     mem::forget(path);
 }

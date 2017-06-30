@@ -14,8 +14,6 @@
 //
 
 use compaction_filter::{CompactionFilter, new_compaction_filter, CompactionFilterHandle};
-use table_properties_collector::{TablePropertiesCollector};
-use table_properties_collector_factory::{TablePropertiesCollectorFactory,new_table_properties_collector_factory,TablePropertiesCollectorFactoryHandle};
 use comparator::{self, ComparatorCallback, compare_callback};
 
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
@@ -28,6 +26,8 @@ use merge_operator::MergeFn;
 use slice_transform::{SliceTransform, new_slice_transform};
 use std::ffi::{CStr, CString};
 use std::mem;
+use table_properties_collector_factory::{TablePropertiesCollectorFactory,
+                                         new_table_properties_collector_factory};
 
 #[derive(Default, Debug)]
 pub struct HistogramData {
@@ -297,7 +297,6 @@ impl Drop for CompactOptions {
 pub struct Options {
     pub inner: *mut DBOptions,
     filter: Option<CompactionFilterHandle>,
-    collector_factory: Option<TablePropertiesCollectorFactoryHandle>,
 }
 
 impl Drop for Options {
@@ -315,8 +314,7 @@ impl Default for Options {
             assert!(!opts.is_null(), "Could not create rocksdb options");
             Options {
                 inner: opts,
-                filter: None,
-                collector_factory: None,
+                filter: None, // collector_factory: None,
             }
         }
     }
@@ -333,7 +331,6 @@ impl Options {
         Options {
             inner: inner,
             filter: None,
-            collector_factory: None,
         }
     }
 
@@ -397,10 +394,9 @@ impl Options {
             };
             let factory = new_table_properties_collector_factory(c_name, collector_factory);
             crocksdb_ffi::crocksdb_options_add_table_properities_collector_factory(self.inner,
-                                                                 factory
-                                                                     .as_ref()
-                                                                     .unwrap()
-                                                                     .inner);
+                                                                                   factory.as_ref()
+                                                                                       .unwrap()
+                                                                                       .inner);
             mem::forget(factory);
             Ok(())
         }

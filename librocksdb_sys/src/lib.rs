@@ -248,7 +248,7 @@ extern "C" {
     pub fn crocksdb_options_set_compaction_filter(options: *mut DBOptions,
                                                   filter: *mut DBCompactionFilter);
     pub fn crocksdb_options_add_table_properities_collector_factory(options: *mut DBOptions,
-                                                  collector_factory: *mut DBTablePropertiesCollectorFactory);                                            
+                                                  collector_factory: *mut DBTablePropertiesCollectorFactory);
     pub fn crocksdb_options_set_create_if_missing(options: *mut DBOptions, v: bool);
     pub fn crocksdb_options_set_max_open_files(options: *mut DBOptions, files: c_int);
     pub fn crocksdb_options_set_max_total_wal_size(options: *mut DBOptions, size: u64);
@@ -728,24 +728,24 @@ extern "C" {
     pub fn crocksdb_tablepropertiescollector_destroy(collector: *mut DBTablePropertiesCollector);
 
     // Table properties collector factory
-    pub fn crocksdb_tablepropertiescollectorfactory_create(state: *mut c_void,
-                                                    destructor: extern "C" fn(*mut c_void),
-                                                    create_table_properties_collector: extern "C" fn(*mut c_void, u32)-> *mut c_void,
-                                                    name: extern "C" fn(*mut c_void) -> *const c_char,
-                                                    collector_destructor: extern "C" fn(*mut c_void),
-                                                    collector_add_userkey: extern "C" fn(*mut c_void,
-                                                                               *const u8,
-                                                                               size_t,
-                                                                               *const u8,
-                                                                               size_t,
-                                                                               c_int,
-                                                                               u64,
-                                                                               u64),
-                                                    collector_finish: extern "C" fn(*mut c_void,
-                                                                                    *mut c_void),
-                                                    collector_readable_properties: extern "C" fn(*mut c_void),
-                                                    collector_name: extern "C" fn(*mut c_void) -> *const c_char)
-                                                    -> *mut DBTablePropertiesCollectorFactory;
+    pub fn crocksdb_tablepropertiescollectorfactory_create
+        (state: *mut c_void,
+         destructor: extern "C" fn(*mut c_void),
+         create_table_properties_collector: extern "C" fn(*mut c_void, u32) -> *mut c_void,
+         name: extern "C" fn(*mut c_void) -> *const c_char,
+         collector_destructor: extern "C" fn(*mut c_void),
+         collector_add_userkey: extern "C" fn(*mut c_void,
+                                              *const u8,
+                                              size_t,
+                                              *const u8,
+                                              size_t,
+                                              c_int,
+                                              u64,
+                                              u64),
+         collector_finish: extern "C" fn(*mut c_void, *mut c_void),
+         collector_readable_properties: extern "C" fn(*mut c_void),
+         collector_name: extern "C" fn(*mut c_void) -> *const c_char)
+         -> *mut DBTablePropertiesCollectorFactory;
     pub fn crocksdb_tablepropertiescollectorfactory_destroy(collector_factory: *mut DBTablePropertiesCollectorFactory);
 
 
@@ -864,10 +864,11 @@ extern "C" {
                                         -> *const u8;
     pub fn crocksdb_pinnableslice_destroy(v: *mut DBPinnableSlice);
     pub fn crocksdb_add_property(props: *mut c_void,
-                                key: *const u8,
-                                key_length: size_t,
-                                value: *const u8,
-                                value_length: size_t)-> c_void;
+                                 key: *const u8,
+                                 key_length: size_t,
+                                 value: *const u8,
+                                 value_length: size_t)
+                                 -> c_void;
 }
 
 #[cfg(test)]
