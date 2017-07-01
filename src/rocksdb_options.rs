@@ -73,9 +73,8 @@ impl BlockBasedOptions {
     pub fn set_lru_cache(&mut self, size: size_t) {
         let cache = crocksdb_ffi::new_cache(size);
         unsafe {
-            // because cache is wrapped in shared_ptr, so we don't need to call
-            // rocksdb_cache_destroy explicitly.
             crocksdb_ffi::crocksdb_block_based_options_set_block_cache(self.inner, cache);
+            crocksdb_ffi::crocksdb_cache_destroy(cache);
         }
     }
 
@@ -653,6 +652,12 @@ impl Options {
         }
     }
 
+    pub fn set_delayed_write_rate(&mut self, rate: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_delayed_write_rate(self.inner, rate);
+        }
+    }
+
     pub fn enable_statistics(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_options_enable_statistics(self.inner);
@@ -874,6 +879,12 @@ impl Options {
 
     pub fn get_block_cache_usage(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_usage(self.inner) as u64 }
+    }
+
+    pub fn allow_concurrent_memtable_write(&self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_allow_concurrent_memtable_write(self.inner, v);
+        }
     }
 }
 
