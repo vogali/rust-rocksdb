@@ -3022,8 +3022,8 @@ uint64_t crocksdb_table_properties_get_u64(crocksdb_table_properties_t* props,
   case kFormatVersion: return rep->format_version;
   case kFixedKeyLen: return rep->data_size;
   case kColumnFamilyID: return rep->column_family_id;
+  default: return 0;
   }
-  return 0;
 }
 
 const char* crocksdb_table_properties_get_str(crocksdb_table_properties_t* props,
@@ -3051,8 +3051,9 @@ const char* crocksdb_table_properties_get_str(crocksdb_table_properties_t* props
   case kCompressionName:
     *slen = rep->compression_name.size();
     return rep->compression_name.data();
+  default:
+    return nullptr;
   }
-  return nullptr;
 }
 
 crocksdb_user_collected_properties_t*
