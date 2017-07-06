@@ -320,8 +320,8 @@ impl Default for Options {
 }
 
 impl Clone for Options {
-    // Only copy DBOptions.
     fn clone(&self) -> Self {
+        assert!(self.filter.is_none());
         unsafe {
             let opts = crocksdb_ffi::crocksdb_options_copy(self.inner);
             assert!(!opts.is_null());
@@ -437,6 +437,10 @@ impl Options {
             ret.set_len(size);
             ret
         }
+    }
+
+    pub fn bottommost_compression(&self, c: DBCompressionType) {
+        unsafe { crocksdb_ffi::crocksdb_set_bottommost_compression(self.inner, c) }
     }
 
     pub fn add_merge_operator(&mut self, name: &str, merge_fn: MergeFn) {
