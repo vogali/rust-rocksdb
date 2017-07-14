@@ -38,7 +38,8 @@ pub use merge_operator::MergeOperands;
 pub use rocksdb::{DB, DBIterator, DBVector, Kv, SeekKey, Writable, WriteBatch, CFHandle, Range,
                   BackupEngine, SstFileWriter};
 pub use rocksdb_options::{BlockBasedOptions, Options, ReadOptions, WriteOptions, RestoreOptions,
-                          IngestExternalFileOptions, EnvOptions, HistogramData, CompactOptions};
+                          IngestExternalFileOptions, EnvOptions, HistogramData, CompactOptions,
+                          BlobdbOptions};
 pub use slice_transform::SliceTransform;
 pub use table_properties::{TableProperties, TablePropertiesCollection, UserCollectedProperties};
 pub use table_properties_collector::TablePropertiesCollector;
