@@ -314,11 +314,11 @@ impl DB {
         DB::open(opts, path)
     }
 
-    pub fn open_blobdb(opts: Options,
+    pub fn open_blobdb(db_opts: Options,
                        blobdb_options: BlobdbOptions,
                        path: &str)
                        -> Result<DB, String> {
-        DB::open_blobdb_cf(opts, path, &[], &[])
+        DB::open_blobdb_cf(db_opts, blobdb_options, path, &[], &[])
     }
 
     pub fn open_blobdb_cf(db_opts: Options,
@@ -398,7 +398,7 @@ impl DB {
             inner: db,
             cfs: cf_map,
             path: path.to_owned(),
-            opts: opts,
+            opts: db_opts,
         })
     }
 

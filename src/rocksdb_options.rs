@@ -30,7 +30,7 @@ use table_properties_collector_factory::{TablePropertiesCollectorFactory,
                                          new_table_properties_collector_factory};
 
 pub struct BlobdbOptions {
-    inner: *mut DBBlobdbOptions,
+    pub inner: *mut DBBlobdbOptions,
 }
 
 impl Drop for BlobdbOptions {

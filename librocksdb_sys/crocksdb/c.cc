@@ -140,11 +140,8 @@ struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
 };
 
-struct crocksdb_blobdb_t {
-  BlobDB rep;
-};
 struct crocksdb_blobdb_options_t {
-  BlobDBOptinos rep;
+  BlobDBOptions rep;
 };
 
 struct crocksdb_compactionfilter_t : public CompactionFilter {
@@ -495,7 +492,7 @@ crocksdb_t *crocksdb_open_blobdb_column_families(
   BlobDB *db;
   std::vector<ColumnFamilyHandle *> handles;
   if (SaveError(errptr, BlobDB::Open(DBOptions(db_options->rep),
-                                     blobdb_options->rep, std::string(name),
+                                     blobdb_options->rep, std::string(dbname),
                                      column_families, &handles, &db))) {
     return nullptr;
   }

@@ -156,7 +156,7 @@ crocksdb_open_blobdb(const crocksdb_options_t *db_options,
                      const crocksdb_blobdb_options_t *blobdb_options,
                      const char *dbname, char **errptr);
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_t *crocksdb_open_column_families(
+extern C_ROCKSDB_LIBRARY_API crocksdb_t *crocksdb_open_blobdb_column_families(
     const crocksdb_options_t *db_options,
     const crocksdb_blobdb_options_t *blobdb_options, const char *name,
     int num_column_families, const char **column_family_names,
