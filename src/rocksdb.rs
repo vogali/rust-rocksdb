@@ -318,10 +318,85 @@ impl DB {
                        blobdb_options: BlobdbOptions,
                        path: &str)
                        -> Result<DB, String> {
-        let db = unsafe { ffi_try(crocksdb_open_blobdb(opts.inner, blobdb_options.inner, path)) };
+        DB::open_blobdb_cf(opts, path, &[], &[])
+    }
+
+    pub fn open_blobdb_cf(db_opts: Options,
+                          blobdb_options: BlobdbOptions,
+                          path: &str,
+                          cfs: &[&str],
+                          cf_opts: &[&Options])
+                          -> Result<DB, String> {
+        let cpath = match CString::new(path.as_bytes()) {
+            Ok(c) => c,
+            Err(_) => {
+                return Err("Failed to convert path to CString when opening rocksdb".to_owned())
+            }
+        };
+        if let Err(e) = fs::create_dir_all(&Path::new(path)) {
+            return Err(format!("Failed to create rocksdb directory: \
+                                src/rocksdb.rs:                              \
+                                {:?}",
+                               e));
+        }
+
+        if cfs.len() != cf_opts.len() {
+            return Err(format!("cfs.len() and cf_opts.len() not match."));
+        }
+
+        let (db, cf_map) = {
+            let mut cfs_v = cfs.to_vec();
+            let mut cf_opts_v = cf_opts.to_vec();
+            // Always open the default column family
+            if !cfs_v.contains(&DEFAULT_COLUMN_FAMILY) {
+                cfs_v.push(DEFAULT_COLUMN_FAMILY);
+                cf_opts_v.push(&db_opts);
+            }
+
+            // We need to store our CStrings in an intermediate vector
+            // so that their pointers remain valid.
+            let c_cfs = build_cstring_list(&cfs_v);
+
+            let cfnames: Vec<*const _> = c_cfs.iter().map(|cf| cf.as_ptr()).collect();
+
+            // These handles will be populated by DB.
+            let cfhandles: Vec<_> = cfs_v.iter().map(|_| ptr::null_mut()).collect();
+
+            let cfopts: Vec<_> = cf_opts_v.iter()
+                .map(|x| x.inner as *const crocksdb_ffi::DBOptions)
+                .collect();
+
+            let db = unsafe {
+                ffi_try!(crocksdb_open_blobdb_column_families(db_opts.inner,
+                                                              blobdb_options.inner,
+                                                              cpath.as_ptr(),
+                                                              cfs_v.len() as c_int,
+                                                              cfnames.as_ptr(),
+                                                              cfopts.as_ptr(),
+                                                              cfhandles.as_ptr()))
+            };
+
+            for handle in &cfhandles {
+                if handle.is_null() {
+                    return Err("Received null column family handle from DB.".to_owned());
+                }
+            }
+
+            let mut cf_map = BTreeMap::new();
+            for (n, h) in cfs_v.iter().zip(cfhandles) {
+                cf_map.insert((*n).to_owned(), CFHandle { inner: h });
+            }
+
+            if db.is_null() {
+                return Err("Could not initialize database.".to_owned());
+            }
+
+            (db, cf_map)
+        };
+
         Ok(DB {
             inner: db,
-            cfs: BTreeMap::new(),
+            cfs: cf_map,
             path: path.to_owned(),
             opts: opts,
         })

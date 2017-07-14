@@ -9,7 +9,6 @@
 
 #include "crocksdb/c.h"
 
-#include <stdlib.h>
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
@@ -18,19 +17,20 @@
 #include "rocksdb/env.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/iterator.h"
+#include "rocksdb/memtablerep.h"
 #include "rocksdb/merge_operator.h"
 #include "rocksdb/options.h"
-#include "rocksdb/status.h"
-#include "rocksdb/write_batch.h"
-#include "rocksdb/memtablerep.h"
-#include "rocksdb/universal_compaction.h"
-#include "rocksdb/statistics.h"
+#include "rocksdb/rate_limiter.h"
 #include "rocksdb/slice_transform.h"
+#include "rocksdb/statistics.h"
+#include "rocksdb/status.h"
 #include "rocksdb/table.h"
 #include "rocksdb/table_properties.h"
-#include "rocksdb/rate_limiter.h"
+#include "rocksdb/universal_compaction.h"
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/blob_db.h"
+#include "rocksdb/write_batch.h"
+#include <stdlib.h>
 
 using rocksdb::Cache;
 using rocksdb::ColumnFamilyDescriptor;
@@ -140,8 +140,12 @@ struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
 };
 
-struct crocksdb_blobdb_t { BlobDB rep; };
-struct crocksdb_blobdb_options_t { BlobDBOptinos rep; };
+struct crocksdb_blobdb_t {
+  BlobDB rep;
+};
+struct crocksdb_blobdb_options_t {
+  BlobDBOptinos rep;
+};
 
 struct crocksdb_compactionfilter_t : public CompactionFilter {
   void* state_;
@@ -461,17 +465,49 @@ crocksdb_t* crocksdb_open_for_read_only(
   return result;
 }
 
-crocksdb_t* crocksdb_open_blobdb(
-    const crocksdb_options_t* db_options,
-    const crocksdb_blobdb_options_t* blobdb_options,
-    const char* dbname,
-    char** errptr) {
-  BlobDB* db;
-  if (SaveError(errptr, BlobDB::Open(db_options->rep, blobdb_options->rep, dbname, &db))) {
+crocksdb_t *
+crocksdb_open_blobdb(const crocksdb_options_t *db_options,
+                     const crocksdb_blobdb_options_t *blobdb_options,
+                     const char *dbname, char **errptr) {
+  BlobDB *db;
+  if (SaveError(errptr, BlobDB::Open(db_options->rep, blobdb_options->rep,
+                                     dbname, &db))) {
     return nullptr;
   }
-  crocksdb_t* result = new crocksdb_t;
-  result->rep = dynamic_cast<DB*>(db);
+  crocksdb_t *result = new crocksdb_t;
+  result->rep = dynamic_cast<DB *>(db);
+  return result;
+}
+
+crocksdb_t *crocksdb_open_blobdb_column_families(
+    const crocksdb_options_t *db_options,
+    const crocksdb_blobdb_options_t *blobdb_options, const char *dbname,
+    int num_column_families, const char **column_family_names,
+    const crocksdb_options_t **column_family_options,
+    crocksdb_column_family_handle_t **column_family_handles, char **errptr) {
+  std::vector<ColumnFamilyDescriptor> column_families;
+  for (int i = 0; i < num_column_families; i++) {
+    column_families.push_back(ColumnFamilyDescriptor(
+        std::string(column_family_names[i]),
+        ColumnFamilyOptions(column_family_options[i]->rep)));
+  }
+
+  BlobDB *db;
+  std::vector<ColumnFamilyHandle *> handles;
+  if (SaveError(errptr, BlobDB::Open(DBOptions(db_options->rep),
+                                     blobdb_options->rep, std::string(name),
+                                     column_families, &handles, &db))) {
+    return nullptr;
+  }
+
+  for (size_t i = 0; i < handles.size(); i++) {
+    crocksdb_column_family_handle_t *c_handle =
+        new crocksdb_column_family_handle_t;
+    c_handle->rep = handles[i];
+    column_family_handles[i] = c_handle;
+  }
+  crocksdb_t *result = new crocksdb_t;
+  result->rep = db;
   return result;
 }
 
@@ -1618,11 +1654,11 @@ void crocksdb_options_destroy(crocksdb_options_t* options) {
   delete options;
 }
 
-crocksdb_blobdb_options_t* crocksdb_blobdb_options_create() {
+crocksdb_blobdb_options_t *crocksdb_blobdb_options_create() {
   return new crocksdb_blobdb_options_t;
 }
 
-void crocksdb_blobdb_options_destroy(crocksdb_blobdb_options_t* options) {
+void crocksdb_blobdb_options_destroy(crocksdb_blobdb_options_t *options) {
   delete options;
 }
 

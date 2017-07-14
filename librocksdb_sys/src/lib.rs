@@ -647,6 +647,16 @@ extern "C" {
                                          column_family_handles: *const *mut DBCFHandle,
                                          err: *mut *mut c_char)
                                          -> *mut DBInstance;
+    // Column Family
+    pub fn crocksdb_open_blobdb_column_families(options: *const DBOptions,
+                                                blobdb_options: *const DBBlobdbOptions,
+                                                path: *const c_char,
+                                                num_column_families: c_int,
+                                                column_family_names: *const *const c_char,
+                                                column_family_options: *const *const DBOptions,
+                                                column_family_handles: *const *mut DBCFHandle,
+                                                err: *mut *mut c_char)
+                                                -> *mut DBInstance;
     pub fn crocksdb_create_column_family(db: *mut DBInstance,
                                          column_family_options: *const DBOptions,
                                          column_family_name: *const c_char,
