@@ -21,6 +21,7 @@ use libc::{c_char, c_uchar, c_int, c_void, size_t, uint8_t, uint32_t, uint64_t, 
 use std::ffi::CStr;
 
 pub enum DBOptions {}
+pub enum DBBlobdbOptions {}
 pub enum DBInstance {}
 pub enum DBWriteOptions {}
 pub enum DBReadOptions {}
@@ -376,6 +377,8 @@ extern "C" {
     pub fn crocksdb_options_set_ratelimiter(options: *mut DBOptions, limiter: *mut DBRateLimiter);
     pub fn crocksdb_options_set_info_log(options: *mut DBOptions, logger: *mut DBLogger);
     pub fn crocksdb_options_get_block_cache_usage(options: *const DBOptions) -> usize;
+    pub fn crocksdb_blobdb_options_create() -> *mut DBBlobdbOptions;
+    pub fn crocksdb_blobdb_options_destroy(opts: *mut DBBlobdbOptions);
     pub fn crocksdb_ratelimiter_create(rate_bytes_per_sec: i64,
                                        refill_period_us: i64,
                                        fairness: i32)
@@ -393,6 +396,11 @@ extern "C" {
                          path: *const c_char,
                          err: *mut *mut c_char)
                          -> *mut DBInstance;
+    pub fn crocksdb_blobdb_open(options: *mut DBOptions,
+                                blobdb_options: *mut DBBlobdbOptions,
+                                path: *const c_char,
+                                err: *mut *mut c_char)
+                                -> *mut DBInstance;
     pub fn crocksdb_writeoptions_create() -> *mut DBWriteOptions;
     pub fn crocksdb_writeoptions_destroy(writeopts: *mut DBWriteOptions);
     pub fn crocksdb_writeoptions_set_sync(writeopts: *mut DBWriteOptions, v: bool);
@@ -904,9 +912,11 @@ extern "C" {
                                                   vlen: *mut size_t)
                                                   -> *const uint8_t;
 
-    pub fn crocksdb_user_collected_properties_len(props: *const DBUserCollectedProperties) -> size_t;
+    pub fn crocksdb_user_collected_properties_len(props: *const DBUserCollectedProperties)
+                                                  -> size_t;
 
-    pub fn crocksdb_table_properties_collection_len(props: *const DBTablePropertiesCollection) -> size_t;
+    pub fn crocksdb_table_properties_collection_len(props: *const DBTablePropertiesCollection)
+                                                    -> size_t;
 
     pub fn crocksdb_table_properties_collection_destroy(props: *mut DBTablePropertiesCollection);
 

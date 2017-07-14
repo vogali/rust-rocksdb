@@ -90,6 +90,7 @@ typedef struct crocksdb_iterator_t        crocksdb_iterator_t;
 typedef struct crocksdb_logger_t          crocksdb_logger_t;
 typedef struct crocksdb_mergeoperator_t   crocksdb_mergeoperator_t;
 typedef struct crocksdb_options_t         crocksdb_options_t;
+typedef struct crocksdb_blobdb_options_t  crocksdb_blobdb_options_t;
 typedef struct crocksdb_compactoptions_t crocksdb_compactoptions_t;
 typedef struct crocksdb_block_based_table_options_t
     crocksdb_block_based_table_options_t;
@@ -149,6 +150,12 @@ typedef enum crocksdb_table_property_t {
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open(
     const crocksdb_options_t* options, const char* name, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open_blobdb(
+    const crocksdb_options_t* db_options,
+    const crocksdb_blobdb_options_t* blobdb_options,
+    const char* dbname,
+    char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open_for_read_only(
     const crocksdb_options_t* options, const char* name,
@@ -604,6 +611,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_cuckoo_table_factory(
 extern C_ROCKSDB_LIBRARY_API crocksdb_options_t* crocksdb_options_create();
 extern C_ROCKSDB_LIBRARY_API crocksdb_options_t* crocksdb_options_copy(const crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_destroy(crocksdb_options_t*);
+extern C_ROCKSDB_LIBRARY_API crocksdb_blobdb_options_t* crocksdb_blobdb_options_create();
+extern C_ROCKSDB_LIBRARY_API void crocksdb_blobdb_options_destroy(crocksdb_blobdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_increase_parallelism(
     crocksdb_options_t* opt, int total_threads);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_optimize_for_point_lookup(

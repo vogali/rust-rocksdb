@@ -16,9 +16,9 @@
 use compaction_filter::{CompactionFilter, new_compaction_filter, CompactionFilterHandle};
 use comparator::{self, ComparatorCallback, compare_callback};
 
-use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
-                   DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
-                   DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
+use crocksdb_ffi::{self, DBOptions, DBBlobdbOptions, DBWriteOptions, DBBlockBasedTableOptions,
+                   DBReadOptions, DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot,
+                   DBInstance, DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
                    DBRateLimiter, DBInfoLogLevel, DBCompactOptions};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
@@ -28,6 +28,24 @@ use std::ffi::{CStr, CString};
 use std::mem;
 use table_properties_collector_factory::{TablePropertiesCollectorFactory,
                                          new_table_properties_collector_factory};
+
+pub struct BlobdbOptions {
+    inner: *mut DBBlobdbOptions,
+}
+
+impl Drop for BlobdbOptions {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_blobdb_options_destroy(self.inner);
+        }
+    }
+}
+
+impl BlobdbOptions {
+    pub fn new() -> BlobdbOptions {
+        unsafe { BlobdbOptions { inner: crocksdb_ffi::crocksdb_blobdb_options_create() } }
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct HistogramData {

@@ -30,6 +30,7 @@
 #include "rocksdb/table_properties.h"
 #include "rocksdb/rate_limiter.h"
 #include "rocksdb/utilities/backupable_db.h"
+#include "rocksdb/utilities/blob_db.h"
 
 using rocksdb::Cache;
 using rocksdb::ColumnFamilyDescriptor;
@@ -91,6 +92,8 @@ using rocksdb::TableProperties;
 using rocksdb::TablePropertiesCollection;
 using rocksdb::TablePropertiesCollector;
 using rocksdb::TablePropertiesCollectorFactory;
+using rocksdb::blob_db::BlobDB;
+using rocksdb::blob_db::BlobDBOptions;
 
 using std::shared_ptr;
 
@@ -136,6 +139,9 @@ struct crocksdb_pinnableslice_t   { PinnableSlice     rep; };
 struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
 };
+
+struct crocksdb_blobdb_t { BlobDB rep; };
+struct crocksdb_blobdb_options_t { BlobDBOptinos rep; };
 
 struct crocksdb_compactionfilter_t : public CompactionFilter {
   void* state_;
@@ -452,6 +458,20 @@ crocksdb_t* crocksdb_open_for_read_only(
   }
   crocksdb_t* result = new crocksdb_t;
   result->rep = db;
+  return result;
+}
+
+crocksdb_t* crocksdb_open_blobdb(
+    const crocksdb_options_t* db_options,
+    const crocksdb_blobdb_options_t* blobdb_options,
+    const char* dbname,
+    char** errptr) {
+  BlobDB* db;
+  if (SaveError(errptr, BlobDB::Open(db_options->rep, blobdb_options->rep, dbname, &db))) {
+    return nullptr;
+  }
+  crocksdb_t* result = new crocksdb_t;
+  result->rep = dynamic_cast<DB*>(db);
   return result;
 }
 
@@ -1595,6 +1615,14 @@ crocksdb_options_t* crocksdb_options_copy(const crocksdb_options_t *other) {
 }
 
 void crocksdb_options_destroy(crocksdb_options_t* options) {
+  delete options;
+}
+
+crocksdb_blobdb_options_t* crocksdb_blobdb_options_create() {
+  return new crocksdb_blobdb_options_t;
+}
+
+void crocksdb_blobdb_options_destroy(crocksdb_blobdb_options_t* options) {
   delete options;
 }
 

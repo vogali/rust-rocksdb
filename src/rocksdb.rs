@@ -17,8 +17,9 @@ use crocksdb_ffi::{self, DBWriteBatch, DBCFHandle, DBInstance, DBBackupEngine,
                    DBStatisticsTickerType, DBStatisticsHistogramType, DBPinnableSlice,
                    DBCompressionType};
 use libc::{self, c_int, c_void, size_t};
-use rocksdb_options::{Options, ReadOptions, UnsafeSnap, WriteOptions, FlushOptions, EnvOptions,
-                      RestoreOptions, IngestExternalFileOptions, HistogramData, CompactOptions};
+use rocksdb_options::{Options, BlobdbOptions, ReadOptions, UnsafeSnap, WriteOptions, FlushOptions,
+                      EnvOptions, RestoreOptions, IngestExternalFileOptions, HistogramData,
+                      CompactOptions};
 use std::{fs, ptr, slice};
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -311,6 +312,19 @@ impl DB {
         let mut opts = Options::new();
         opts.create_if_missing(true);
         DB::open(opts, path)
+    }
+
+    pub fn open_blobdb(opts: Options,
+                       blobdb_options: BlobdbOptions,
+                       path: &str)
+                       -> Result<DB, String> {
+        let db = unsafe { ffi_try(crocksdb_open_blobdb(opts.inner, blobdb_options.inner, path)) };
+        Ok(DB {
+            inner: db,
+            cfs: BTreeMap::new(),
+            path: path.to_owned(),
+            opts: opts,
+        })
     }
 
     pub fn open(opts: Options, path: &str) -> Result<DB, String> {
