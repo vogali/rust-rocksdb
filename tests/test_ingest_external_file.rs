@@ -16,7 +16,10 @@ use rocksdb::*;
 use std::fs;
 use tempdir::TempDir;
 
-pub fn gen_sst(opt: Options, cf: Option<&CFHandle>, path: &str, data: &[(&[u8], &[u8])]) {
+pub fn gen_sst(opt: ColumnFamilyOptions,
+               cf: Option<&CFHandle>,
+               path: &str,
+               data: &[(&[u8], &[u8])]) {
     let _ = fs::remove_file(path);
     let env_opt = EnvOptions::new();
     let mut writer = if cf.is_some() {
@@ -36,10 +39,10 @@ fn test_ingest_external_file() {
     let path = TempDir::new("_rust_rocksdb_ingest_sst").expect("");
     let path_str = path.path().to_str().unwrap();
 
-    let mut opts = Options::new();
+    let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     let mut db = DB::open(opts, path_str).unwrap();
-    let cf_opts = Options::new();
+    let cf_opts = ColumnFamilyOptions::new();
     db.create_cf("cf1", &cf_opts).unwrap();
     let handle = db.cf_handle("cf1").unwrap();
 
@@ -53,7 +56,7 @@ fn test_ingest_external_file() {
             test_sstfile_str,
             &[(b"k1", b"v1"), (b"k2", b"v2")]);
 
-    let mut ingest_opt = IngestExternalFileOptions::new();
+    let ingest_opt = IngestExternalFileOptions::new();
     db.ingest_external_file(&ingest_opt, &[test_sstfile_str])
         .unwrap();
     assert!(test_sstfile.exists());
@@ -71,12 +74,12 @@ fn test_ingest_external_file() {
 
     let snap = db.snapshot();
 
-    let opt = Options::new();
-    gen_sst(opt,
+    let cf_opts = ColumnFamilyOptions::new();
+    gen_sst(cf_opts,
             None,
             test_sstfile_str,
             &[(b"k2", b"v5"), (b"k3", b"v6")]);
-    ingest_opt.move_files(true);
+    // ingest_opt.move_files(true);
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
 
