@@ -15,7 +15,6 @@
 
 extern crate rocksdb;
 use rocksdb::{DB, MergeOperands, DBOptions, Writable, ColumnFamilyOptions};
-// use rocksdb_options::{DBOptions, ColumnFamilyOptions};
 
 // fn snapshot_test() {
 //    let path = "_rust_rocksdb_iteratortest";
