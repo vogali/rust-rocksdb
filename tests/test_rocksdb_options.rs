@@ -31,8 +31,8 @@ fn test_set_num_levels() {
     cf_opts.set_num_levels(2);
     let db = DB::open_cf(opts,
                          path.path().to_str().unwrap(),
-                         &["default"],
-                         &[&cf_opts])
+                         vec!["default"],
+                         vec![cf_opts])
         .unwrap();
     drop(db);
 }
@@ -111,8 +111,8 @@ fn test_memtable_insert_hint_prefix_extractor() {
         .unwrap();
     let db = DB::open_cf(opts,
                          path.path().to_str().unwrap(),
-                         &["default"],
-                         &[&cf_opts])
+                         vec!["default"],
+                         vec![cf_opts])
         .unwrap();
     let wopts = WriteOptions::new();
 
@@ -231,8 +231,8 @@ fn test_set_pin_l0_filter_and_index_blocks_in_cache() {
     cf_opts.set_block_based_table_factory(&block_opts);
     DB::open_cf(opts,
                 path.path().to_str().unwrap(),
-                &["default"],
-                &[&cf_opts])
+                vec!["default"],
+                vec![cf_opts])
         .unwrap();
 }
 #[test]
@@ -245,8 +245,8 @@ fn test_pending_compaction_bytes_limit() {
     cf_opts.set_hard_pending_compaction_bytes_limit(256 * 1024 * 1024 * 1024);
     DB::open_cf(opts,
                 path.path().to_str().unwrap(),
-                &["default"],
-                &[&cf_opts])
+                vec!["default"],
+                vec![cf_opts])
         .unwrap();
 }
 
@@ -278,8 +278,8 @@ fn test_set_optimize_filters_for_hits() {
     cf_opts.set_optimize_filters_for_hits(true);
     DB::open_cf(opts,
                 path.path().to_str().unwrap(),
-                &["default"],
-                &[&cf_opts])
+                vec!["default"],
+                vec![cf_opts])
         .unwrap();
 }
 
@@ -297,8 +297,8 @@ fn test_get_block_cache_usage() {
     cf_opts.set_block_based_table_factory(&block_opts);
     let db = DB::open_cf(opts,
                          path.path().to_str().unwrap(),
-                         &["default"],
-                         &[&cf_opts])
+                         vec!["default"],
+                         vec![cf_opts])
         .unwrap();
 
     for i in 0..200 {
@@ -321,8 +321,8 @@ fn test_set_level_compaction_dynamic_level_bytes() {
     cf_opts.set_level_compaction_dynamic_level_bytes(true);
     DB::open_cf(opts,
                 path.path().to_str().unwrap(),
-                &["default"],
-                &[&cf_opts])
+                vec!["default"],
+                vec![cf_opts])
         .unwrap();
 }
 
@@ -377,8 +377,8 @@ fn test_set_compaction_pri() {
     cf_opts.compaction_priority(CompactionPriority::MinOverlappingRatio);
     DB::open_cf(opts,
                 path.path().to_str().unwrap(),
-                &["default"],
-                &[&cf_opts])
+                vec!["default"],
+                vec![cf_opts])
         .unwrap();
 }
 
@@ -437,8 +437,12 @@ fn test_bottommost_compression() {
     let mut opts = DBOptions::new();
     let cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
-    opts.bottommost_compression(DBCompressionType::No);
-    DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    cf_opts.bottommost_compression(DBCompressionType::DBNo);
+    DB::open_cf(opts,
+                path.path().to_str().unwrap(),
+                vec!["default"],
+                vec![cf_opts])
+        .unwrap();
 }
 
 #[test]

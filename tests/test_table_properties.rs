@@ -168,8 +168,8 @@ fn test_table_properties_collector_factory() {
     let path = TempDir::new("_rust_rocksdb_collectortest").expect("");
     let db = DB::open_cf(opts,
                          path.path().to_str().unwrap(),
-                         &["default"],
-                         &[&cf_opts])
+                         vec!["default"],
+                         vec![cf_opts])
         .unwrap();
 
     let samples = vec![(b"key1".to_vec(), b"value1".to_vec()),

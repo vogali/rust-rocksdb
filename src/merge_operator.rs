@@ -183,8 +183,8 @@ mod test {
         cf_opts.add_merge_operator("test operator", test_provided_merge);
         let db = DB::open_cf(opts,
                              path.path().to_str().unwrap(),
-                             &["default"],
-                             &[&cf_opts])
+                             vec!["default"],
+                             vec![cf_opts])
             .unwrap();
         let p = db.put(b"k1", b"a");
         assert!(p.is_ok());

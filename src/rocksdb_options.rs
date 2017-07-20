@@ -1074,7 +1074,7 @@ impl Drop for IngestExternalFileOptions {
     }
 }
 
-/// DBOption while opening a file to read/write
+/// Options while opening a file to read/write
 pub struct EnvOptions {
     pub inner: *mut crocksdb_ffi::EnvOptions,
 }

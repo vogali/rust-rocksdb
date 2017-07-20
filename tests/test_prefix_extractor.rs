@@ -64,8 +64,8 @@ fn test_prefix_extractor_compatibility() {
         cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
         let db = DB::open_cf(opts,
                              path.path().to_str().unwrap(),
-                             &["default"],
-                             &[&cf_opts])
+                             vec!["default"],
+                             vec![cf_opts])
             .unwrap();
         let wopts = WriteOptions::new();
 

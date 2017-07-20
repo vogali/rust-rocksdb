@@ -49,8 +49,8 @@ fn test_slice_transform() {
 
     let db = DB::open_cf(opts,
                          path.path().to_str().unwrap(),
-                         &["default"],
-                         &[&cf_opts])
+                         vec!["default"],
+                         vec![cf_opts])
         .unwrap();
     let samples = vec![(b"key_01".to_vec(), b"1".to_vec()),
                        (b"key_02".to_vec(), b"2".to_vec()),

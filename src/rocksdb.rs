@@ -61,6 +61,7 @@ pub struct DB {
     cfs: BTreeMap<String, CFHandle>,
     path: String,
     opts: DBOptions,
+    _cf_opts: Vec<ColumnFamilyOptions>,
 }
 
 impl Debug for DB {
@@ -322,13 +323,13 @@ impl DB {
     }
 
     pub fn open(opts: DBOptions, path: &str) -> Result<DB, String> {
-        DB::open_cf(opts, path, &[], &[])
+        DB::open_cf(opts, path, vec![], vec![])
     }
 
     pub fn open_cf(opts: DBOptions,
                    path: &str,
-                   cfs: &[&str],
-                   cf_opts: &[&ColumnFamilyOptions])
+                   cfs: Vec<&str>,
+                   cf_opts: Vec<ColumnFamilyOptions>)
                    -> Result<DB, String> {
         let cpath = match CString::new(path.as_bytes()) {
             Ok(c) => c,
@@ -342,18 +343,17 @@ impl DB {
                                 {:?}",
                                e));
         }
-
         if cfs.len() != cf_opts.len() {
             return Err(format!("cfs.len() and cf_opts.len() not match."));
         }
-        let cf_opt = ColumnFamilyOptions::new();
+        let mut cfs_v = cfs;
+        let mut cf_opts_v = cf_opts;
+
         let (db, cf_map) = {
-            let mut cfs_v = cfs.to_vec();
-            let mut cf_opts_v = cf_opts.to_vec();
             // Always open the default column family
             if !cfs_v.contains(&DEFAULT_COLUMN_FAMILY) {
                 cfs_v.push(DEFAULT_COLUMN_FAMILY);
-                cf_opts_v.push(&cf_opt);
+                cf_opts_v.push(ColumnFamilyOptions::new());
             }
 
             // We need to store our CStrings in an intermediate vector
@@ -401,6 +401,7 @@ impl DB {
             cfs: cf_map,
             path: path.to_owned(),
             opts: opts,
+            _cf_opts: cf_opts_v,
         })
     }
 
@@ -970,7 +971,7 @@ impl DB {
             ColumnFamilyOptions::from_raw(inner)
         }
     }
-    ///
+
     pub fn get_options_cf(&self, cf: &CFHandle) -> ColumnFamilyOptions {
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_options_cf(self.inner, cf.inner);
@@ -1871,8 +1872,8 @@ mod test {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
-        let opts = ColumnFamilyOptions::new();
-        db.create_cf("cf", &opts).unwrap();
+        let cf_opts = ColumnFamilyOptions::new();
+        db.create_cf("cf", &cf_opts).unwrap();
 
         let cf_handle = db.cf_handle("cf").unwrap();
         for i in 0..200 {

@@ -251,8 +251,8 @@ fn test_total_order_seek() {
                     b"k3-3"];
     let db = DB::open_cf(opts,
                          path.path().to_str().unwrap(),
-                         &["default"],
-                         &[&cf_opts])
+                         vec!["default"],
+                         vec![cf_opts])
         .unwrap();
     let wopts = WriteOptions::new();
 
@@ -330,8 +330,8 @@ fn test_fixed_suffix_seek() {
 
     let db = DB::open_cf(opts,
                          path.path().to_str().unwrap(),
-                         &["default"],
-                         &[&cf_opts])
+                         vec!["default"],
+                         vec![cf_opts])
         .unwrap();
     db.put(b"k-eghe-5", b"a").unwrap();
     db.put(b"k-24yfae-6", b"a").unwrap();
