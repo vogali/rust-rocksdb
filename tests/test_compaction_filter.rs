@@ -76,7 +76,6 @@ fn test_compaction_filter() {
     }
     drop(db);
 
-    // drop(cf_opts);
     // reregister with ignore_snapshots set to true
     let mut cf_opts = ColumnFamilyOptions::new();
     let opts = DBOptions::new();
@@ -103,6 +102,5 @@ fn test_compaction_filter() {
         }
         assert_eq!(*filtered_kvs.read().unwrap(), samples);
     }
-    // drop(cf_opts);
     assert!(drop_called.load(Ordering::Relaxed));
 }
