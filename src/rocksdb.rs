@@ -526,7 +526,7 @@ impl DB {
 
     pub fn create_cf(&mut self,
                      name: &str,
-                     opts: &ColumnFamilyOptions)
+                     opts: ColumnFamilyOptions)
                      -> Result<&CFHandle, String> {
         let cname = match CString::new(name.as_bytes()) {
             Ok(c) => c,
@@ -1683,13 +1683,12 @@ mod test {
             for _ in 0..cfs.len() {
                 cfs_opts.push(ColumnFamilyOptions::new());
             }
-            let cfs_ref_opts: Vec<&ColumnFamilyOptions> = cfs_opts.iter().collect();
 
             let mut opts = DBOptions::new();
             opts.create_if_missing(true);
             let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
-            for (&cf, &cf_opts) in cfs.iter().zip(&cfs_ref_opts) {
-                if cf == "default" {
+            for (cf, cf_opts) in cfs.iter().zip(cfs_opts) {
+                if *cf == "default" {
                     continue;
                 }
                 db.create_cf(cf, cf_opts).unwrap();
@@ -1873,7 +1872,7 @@ mod test {
         opts.create_if_missing(true);
         let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
         let cf_opts = ColumnFamilyOptions::new();
-        db.create_cf("cf", &cf_opts).unwrap();
+        db.create_cf("cf", cf_opts).unwrap();
 
         let cf_handle = db.cf_handle("cf").unwrap();
         for i in 0..200 {

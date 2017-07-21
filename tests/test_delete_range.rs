@@ -184,9 +184,9 @@ fn test_delete_range_ingest_file() {
              &[(b"key1", None), (b"key2", None), (b"key3", None), (b"key4", Some(b"value4"))]);
 
     let cf_opts = ColumnFamilyOptions::new();
-    db.create_cf("cf1", &cf_opts).unwrap();
+    db.create_cf("cf1", cf_opts).unwrap();
     let handle = db.cf_handle("cf1").unwrap();
-    gen_sst(cf_opts, None, test_sstfile_str);
+    gen_sst(ColumnFamilyOptions::new(), None, test_sstfile_str);
 
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();

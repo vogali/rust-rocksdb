@@ -43,7 +43,7 @@ fn test_ingest_external_file() {
     opts.create_if_missing(true);
     let mut db = DB::open(opts, path_str).unwrap();
     let cf_opts = ColumnFamilyOptions::new();
-    db.create_cf("cf1", &cf_opts).unwrap();
+    db.create_cf("cf1", cf_opts).unwrap();
     let handle = db.cf_handle("cf1").unwrap();
 
     let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen").expect("");
@@ -63,7 +63,7 @@ fn test_ingest_external_file() {
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"v1");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"v2");
 
-    gen_sst(cf_opts,
+    gen_sst(ColumnFamilyOptions::new(),
             None,
             test_sstfile_str,
             &[(b"k1", b"v3"), (b"k2", b"v4")]);
@@ -74,8 +74,7 @@ fn test_ingest_external_file() {
 
     let snap = db.snapshot();
 
-    let cf_opts = ColumnFamilyOptions::new();
-    gen_sst(cf_opts,
+    gen_sst(ColumnFamilyOptions::new(),
             None,
             test_sstfile_str,
             &[(b"k2", b"v5"), (b"k3", b"v6")]);

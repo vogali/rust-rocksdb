@@ -29,7 +29,7 @@ pub fn test_column_family() {
         cf_opts.add_merge_operator("test operator", test_provided_merge);
         let mut db = DB::open_cf(opts, path_str, vec!["default"], vec![cf_opts]).unwrap();
         let cf_opts = ColumnFamilyOptions::new();
-        match db.create_cf("cf1", &cf_opts) {
+        match db.create_cf("cf1", cf_opts) {
             Ok(_) => println!("cf1 created successfully"),
             Err(e) => {
                 panic!("could not create column family: {}", e);
