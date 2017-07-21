@@ -16,7 +16,7 @@
 use compaction_filter::{CompactionFilter, new_compaction_filter, CompactionFilterHandle};
 use comparator::{self, ComparatorCallback, compare_callback};
 
-use crocksdb_ffi::{self, DBOption, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
+use crocksdb_ffi::{self, Options, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
                    DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
                    DBRateLimiter, DBInfoLogLevel, DBCompactOptions};
@@ -295,7 +295,7 @@ impl Drop for CompactOptions {
 }
 
 pub struct DBOptions {
-    pub inner: *mut DBOption,
+    pub inner: *mut Options,
 }
 
 impl Drop for DBOptions {
@@ -630,7 +630,7 @@ impl DBOptions {
 }
 
 pub struct ColumnFamilyOptions {
-    pub inner: *mut DBOption,
+    pub inner: *mut Options,
     filter: Option<CompactionFilterHandle>,
 }
 
@@ -675,7 +675,7 @@ impl ColumnFamilyOptions {
         ColumnFamilyOptions::default()
     }
 
-    pub unsafe fn from_raw(inner: *mut DBOption) -> ColumnFamilyOptions {
+    pub unsafe fn from_raw(inner: *mut Options) -> ColumnFamilyOptions {
         assert!(!inner.is_null(),
                 "could not new rocksdb options with null inner");
         ColumnFamilyOptions {

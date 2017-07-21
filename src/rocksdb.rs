@@ -366,7 +366,7 @@ impl DB {
             let cfhandles: Vec<_> = cfs_v.iter().map(|_| ptr::null_mut()).collect();
 
             let cfopts: Vec<_> = cf_opts_v.iter()
-                .map(|x| x.inner as *const crocksdb_ffi::DBOption)
+                .map(|x| x.inner as *const crocksdb_ffi::Options)
                 .collect();
 
             let db = unsafe {
