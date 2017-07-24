@@ -526,7 +526,7 @@ impl DB {
 
     pub fn create_cf(&mut self,
                      name: &str,
-                     opts: ColumnFamilyOptions)
+                     cf_opts: ColumnFamilyOptions)
                      -> Result<&CFHandle, String> {
         let cname = match CString::new(name.as_bytes()) {
             Ok(c) => c,
@@ -537,8 +537,9 @@ impl DB {
         let cname_ptr = cname.as_ptr();
         unsafe {
             let cf_handler =
-                ffi_try!(crocksdb_create_column_family(self.inner, opts.inner, cname_ptr));
+                ffi_try!(crocksdb_create_column_family(self.inner, cf_opts.inner, cname_ptr));
             let handle = CFHandle { inner: cf_handler };
+            self._cf_opts.push(cf_opts);
             Ok(match self.cfs.entry(name.to_owned()) {
                 Entry::Occupied(mut e) => {
                     e.insert(handle);

@@ -117,7 +117,7 @@ fn custom_merge() {
 #[cfg(test)]
 mod tests {
     use rocksdb::{BlockBasedOptions, DB, DBCompressionType, ColumnFamilyOptions, DBOptions};
-    use rocksdb::DBCompactionStyle::DBUniversal;
+    use rocksdb::DBCompactionStyle;
     use rocksdb::DBRecoveryMode;
 
     #[allow(dead_code)]

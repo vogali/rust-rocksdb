@@ -411,20 +411,20 @@ fn test_get_compression() {
     let mut opts = DBOptions::new();
     let mut cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
-    opts.compression(DBCompressionType::Snappy);
-    assert_eq!(opts.get_compression(), DBCompressionType::Snappy);
+    cf_opts.compression(DBCompressionType::Snappy);
+    assert_eq!(cf_opts.get_compression(), DBCompressionType::Snappy);
 }
 
 #[test]
 fn test_get_compression_per_level() {
-    let mut opts = Options::new();
+    let mut cf_opts = ColumnFamilyOptions::new();
     let compressions = &[DBCompressionType::No, DBCompressionType::Snappy];
-    opts.compression_per_level(compressions);
-    let v = opts.get_compression_per_level();
+    cf_opts.compression_per_level(compressions);
+    let v = cf_opts.get_compression_per_level();
     assert_eq!(v.len(), 2);
     assert_eq!(v[0], DBCompressionType::No);
     assert_eq!(v[1], DBCompressionType::Snappy);
-    let mut opts2 = Options::new();
+    let mut cf_opts2 = ColumnFamilyOptions::new();
     let empty: &[DBCompressionType] = &[];
     cf_opts2.compression_per_level(empty);
     let v2 = cf_opts2.get_compression_per_level();
@@ -437,7 +437,7 @@ fn test_bottommost_compression() {
     let mut opts = DBOptions::new();
     let cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
-    cf_opts.bottommost_compression(DBCompressionType::DBNo);
+    cf_opts.bottommost_compression(DBCompressionType::No);
     DB::open_cf(opts,
                 path.path().to_str().unwrap(),
                 vec!["default"],
@@ -447,8 +447,8 @@ fn test_bottommost_compression() {
 
 #[test]
 fn test_clone_options() {
-    let mut opts = Options::new();
-    opts.compression(DBCompressionType::Snappy);
-    let opts2 = opts.clone();
-    assert_eq!(opts.get_compression(), opts2.get_compression());
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.compression(DBCompressionType::Snappy);
+    let cf_opts2 = cf_opts.clone();
+    assert_eq!(cf_opts.get_compression(), cf_opts2.get_compression());
 }
