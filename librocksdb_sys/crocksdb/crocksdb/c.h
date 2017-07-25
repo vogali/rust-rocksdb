@@ -169,6 +169,9 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_t *crocksdb_open_blobdb_column_families(
     const crocksdb_options_t **column_family_options,
     crocksdb_column_family_handle_t **column_family_handles, char **errptr);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_blobdb_options_set_compression(
+    crocksdb_blobdb_options_t *options, int t);
+
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open_for_read_only(
     const crocksdb_options_t* options, const char* name,
     unsigned char error_if_log_file_exist, char** errptr);

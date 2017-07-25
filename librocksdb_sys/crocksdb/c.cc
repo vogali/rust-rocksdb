@@ -1819,6 +1819,10 @@ void crocksdb_blobdb_options_destroy(crocksdb_blobdb_options_t *options) {
   delete options;
 }
 
+void crocksdb_blobdb_options_set_compression(crocksdb_blobdb_options_t *options, int t) {
+  options->rep.compression = static_cast<CompressionType>(t);
+}
+
 void crocksdb_options_increase_parallelism(
     crocksdb_options_t* opt, int total_threads) {
   opt->rep.IncreaseParallelism(total_threads);

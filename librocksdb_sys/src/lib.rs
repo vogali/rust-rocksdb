@@ -383,6 +383,7 @@ extern "C" {
     pub fn crocksdb_options_get_block_cache_usage(options: *const Options) -> usize;
     pub fn crocksdb_blobdb_options_create() -> *mut DBBlobdbOptions;
     pub fn crocksdb_blobdb_options_destroy(opts: *mut DBBlobdbOptions);
+    pub fn crocksdb_blobdb_options_set_compression(opts: *mut DBBlobdbOptions, c: DBCompressionType);
     pub fn crocksdb_ratelimiter_create(rate_bytes_per_sec: i64,
                                        refill_period_us: i64,
                                        fairness: i32)

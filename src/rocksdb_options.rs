@@ -46,6 +46,12 @@ impl BlobdbOptions {
     pub fn new() -> BlobdbOptions {
         unsafe { BlobdbOptions { inner: crocksdb_ffi::crocksdb_blobdb_options_create() } }
     }
+
+    pub fn compression(&mut self, t: DBCompressionType) {
+        unsafe {
+            crocksdb_ffi::crocksdb_blobdb_options_set_compression(self.inner, t);
+        }
+    }
 }
 
 #[derive(Default, Debug)]
