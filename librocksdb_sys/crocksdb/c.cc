@@ -18,6 +18,8 @@
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/iterator.h"
 #include "rocksdb/memtablerep.h"
+#include "rocksdb/listener.h"
+#include "rocksdb/memtablerep.h"
 #include "rocksdb/merge_operator.h"
 #include "rocksdb/options.h"
 #include "rocksdb/rate_limiter.h"
@@ -31,6 +33,9 @@
 #include "rocksdb/utilities/blob_db.h"
 #include "rocksdb/write_batch.h"
 #include <stdlib.h>
+#include "rocksdb/utilities/debug.h"
+#include "rocksdb/write_batch.h"
+#include <stdlib.h>
 
 using rocksdb::Cache;
 using rocksdb::ColumnFamilyDescriptor;
@@ -39,6 +44,7 @@ using rocksdb::ColumnFamilyOptions;
 using rocksdb::CompactionFilter;
 using rocksdb::CompactionFilterFactory;
 using rocksdb::CompactionFilterContext;
+using rocksdb::CompactionJobInfo;
 using rocksdb::CompactionOptionsFIFO;
 using rocksdb::Comparator;
 using rocksdb::CompressionType;
@@ -47,9 +53,12 @@ using rocksdb::DB;
 using rocksdb::DBOptions;
 using rocksdb::Env;
 using rocksdb::EnvOptions;
+using rocksdb::ExternalFileIngestionInfo;
+using rocksdb::EventListener;
 using rocksdb::InfoLogLevel;
 using rocksdb::FileLock;
 using rocksdb::FilterPolicy;
+using rocksdb::FlushJobInfo;
 using rocksdb::FlushOptions;
 using rocksdb::IngestExternalFileOptions;
 using rocksdb::Iterator;
@@ -94,6 +103,7 @@ using rocksdb::TablePropertiesCollector;
 using rocksdb::TablePropertiesCollectorFactory;
 using rocksdb::blob_db::BlobDB;
 using rocksdb::blob_db::BlobDBOptions;
+using rocksdb::KeyVersion;
 
 using std::shared_ptr;
 
@@ -135,6 +145,19 @@ struct crocksdb_sstfilewriter_t   { SstFileWriter*    rep; };
 struct crocksdb_ratelimiter_t     { RateLimiter*      rep; };
 struct crocksdb_histogramdata_t   { HistogramData     rep; };
 struct crocksdb_pinnableslice_t   { PinnableSlice     rep; };
+struct crocksdb_flushjobinfo_t {
+  FlushJobInfo rep;
+};
+struct crocksdb_compactionjobinfo_t {
+  CompactionJobInfo rep;
+};
+struct crocksdb_externalfileingestioninfo_t {
+  ExternalFileIngestionInfo rep;
+};
+
+struct crocksdb_keyversions_t {
+  std::vector<KeyVersion> rep;
+};
 
 struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
@@ -1594,6 +1617,143 @@ size_t crocksdb_options_get_block_cache_usage(crocksdb_options_t *opt) {
   return 0;
 }
 
+/* FlushJobInfo */
+
+const char* crocksdb_flushjobinfo_cf_name(const crocksdb_flushjobinfo_t* info,
+                                          size_t* size) {
+  *size = info->rep.cf_name.size();
+  return info->rep.cf_name.data();
+}
+
+const char* crocksdb_flushjobinfo_file_path(const crocksdb_flushjobinfo_t* info,
+                                            size_t* size) {
+  *size = info->rep.file_path.size();
+  return info->rep.file_path.data();
+}
+
+const crocksdb_table_properties_t* crocksdb_flushjobinfo_table_properties(
+    const crocksdb_flushjobinfo_t* info) {
+  return reinterpret_cast<const crocksdb_table_properties_t*>(
+      &info->rep.table_properties);
+}
+
+/* CompactionJobInfo */
+
+const char* crocksdb_compactionjobinfo_cf_name(
+    const crocksdb_compactionjobinfo_t* info, size_t* size) {
+  *size = info->rep.cf_name.size();
+  return info->rep.cf_name.data();
+}
+
+size_t crocksdb_compactionjobinfo_input_files_count(
+    const crocksdb_compactionjobinfo_t* info) {
+  return info->rep.input_files.size();
+}
+
+const char* crocksdb_compactionjobinfo_input_file_at(
+    const crocksdb_compactionjobinfo_t* info, size_t pos, size_t* size) {
+  const std::string& path = info->rep.input_files[pos];
+  *size = path.size();
+  return path.data();
+}
+
+size_t crocksdb_compactionjobinfo_output_files_count(
+    const crocksdb_compactionjobinfo_t* info) {
+  return info->rep.output_files.size();
+}
+
+const char* crocksdb_compactionjobinfo_output_file_at(
+    const crocksdb_compactionjobinfo_t* info, size_t pos, size_t* size) {
+  const std::string& path = info->rep.output_files[pos];
+  *size = path.size();
+  return path.data();
+}
+
+const crocksdb_table_properties_collection_t*
+crocksdb_compactionjobinfo_table_properties(
+    const crocksdb_compactionjobinfo_t* info) {
+  return reinterpret_cast<const crocksdb_table_properties_collection_t*>(
+      &info->rep.table_properties);
+}
+
+/* ExternalFileIngestionInfo */
+
+const char* crocksdb_externalfileingestioninfo_cf_name(
+    const crocksdb_externalfileingestioninfo_t* info, size_t* size) {
+  *size = info->rep.cf_name.size();
+  return info->rep.cf_name.data();
+}
+
+const char* crocksdb_externalfileingestioninfo_internal_file_path(
+    const crocksdb_externalfileingestioninfo_t* info, size_t* size) {
+  *size = info->rep.internal_file_path.size();
+  return info->rep.internal_file_path.data();
+}
+
+const crocksdb_table_properties_t*
+crocksdb_externalfileingestioninfo_table_properties(
+    const crocksdb_externalfileingestioninfo_t* info) {
+  return reinterpret_cast<const crocksdb_table_properties_t*>(
+      &info->rep.table_properties);
+}
+
+/* event listener */
+
+struct crocksdb_eventlistener_t : public EventListener {
+  void* state_;
+  void (*destructor_)(void*);
+  void (*on_flush_completed)(void*, crocksdb_t*,
+                             const crocksdb_flushjobinfo_t*);
+  void (*on_compaction_completed)(void*, crocksdb_t*,
+                                  const crocksdb_compactionjobinfo_t*);
+  void (*on_external_file_ingested)(
+      void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
+
+  virtual void OnFlushCompleted(DB* db, const FlushJobInfo& info) {
+    crocksdb_t c_db = {db};
+    on_flush_completed(state_, &c_db,
+                       reinterpret_cast<const crocksdb_flushjobinfo_t*>(&info));
+  }
+
+  virtual void OnCompactionCompleted(DB* db, const CompactionJobInfo& info) {
+    crocksdb_t c_db = {db};
+    on_compaction_completed(
+        state_, &c_db,
+        reinterpret_cast<const crocksdb_compactionjobinfo_t*>(&info));
+  }
+
+  virtual void OnExternalFileIngested(DB* db,
+                                      const ExternalFileIngestionInfo& info) {
+    crocksdb_t c_db = {db};
+    on_external_file_ingested(
+        state_, &c_db,
+        reinterpret_cast<const crocksdb_externalfileingestioninfo_t*>(&info));
+  }
+
+  virtual ~crocksdb_eventlistener_t() { destructor_(state_); }
+};
+
+crocksdb_eventlistener_t* crocksdb_eventlistener_create(
+    void* state_, void (*destructor_)(void*),
+    on_flush_completed_cb on_flush_completed,
+    on_compaction_completed_cb on_compaction_completed,
+    on_external_file_ingested_cb on_external_file_ingested) {
+  crocksdb_eventlistener_t* et = new crocksdb_eventlistener_t;
+  et->state_ = state_;
+  et->destructor_ = destructor_;
+  et->on_flush_completed = on_flush_completed;
+  et->on_compaction_completed = on_compaction_completed;
+  et->on_external_file_ingested = on_external_file_ingested;
+  return et;
+}
+
+void crocksdb_eventlistener_destroy(crocksdb_eventlistener_t* t) { delete t; }
+
+void crocksdb_options_add_eventlistener(crocksdb_options_t* opt,
+                                        crocksdb_eventlistener_t* t) {
+  opt->rep.listeners.emplace_back(std::shared_ptr<EventListener>(t));
+}
+
 crocksdb_cuckoo_table_options_t*
 crocksdb_cuckoo_options_create() {
   return new crocksdb_cuckoo_table_options_t;
@@ -1833,7 +1993,7 @@ void crocksdb_options_set_compression(crocksdb_options_t* opt, int t) {
   opt->rep.compression = static_cast<CompressionType>(t);
 }
 
-int crocksdb_options_get_compression(crocksdb_options_t* opt) {
+int crocksdb_options_get_compression(crocksdb_options_t *opt) {
   return static_cast<int>(opt->rep.compression);
 }
 
@@ -3395,8 +3555,44 @@ crocksdb_get_properties_of_tables_in_range(
   return props.release();
 }
 
-void crocksdb_set_bottommost_compression(crocksdb_options_t* opt, int c) {
+void crocksdb_set_bottommost_compression(crocksdb_options_t *opt, int c) {
   opt->rep.bottommost_compression = static_cast<CompressionType>(c);
+}
+// Get All Key Versions
+void crocksdb_keyversions_destroy(crocksdb_keyversions_t *kvs) { delete kvs; }
+
+crocksdb_keyversions_t *
+crocksdb_get_all_key_versions(crocksdb_t *db, const char *begin_key,
+                              size_t begin_keylen, const char *end_key,
+                              size_t end_keylen, char **errptr) {
+  crocksdb_keyversions_t *result = new crocksdb_keyversions_t;
+  SaveError(errptr,
+            GetAllKeyVersions(db->rep, Slice(begin_key, begin_keylen),
+                              Slice(end_key, end_keylen), &result->rep));
+  return result;
+}
+
+size_t crocksdb_keyversions_count(const crocksdb_keyversions_t *kvs) {
+  return kvs->rep.size();
+}
+
+const char *crocksdb_keyversions_key(const crocksdb_keyversions_t *kvs,
+                                     int index) {
+  return kvs->rep[index].user_key.c_str();
+}
+
+const char *crocksdb_keyversions_value(const crocksdb_keyversions_t *kvs,
+                                       int index) {
+  return kvs->rep[index].value.c_str();
+}
+
+uint64_t crocksdb_keyversions_seq(const crocksdb_keyversions_t *kvs,
+                                  int index) {
+  return kvs->rep[index].sequence;
+}
+
+int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
+  return kvs->rep[index].type;
 }
 
 }  // end extern "C"

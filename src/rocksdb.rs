@@ -17,9 +17,9 @@ use crocksdb_ffi::{self, DBWriteBatch, DBCFHandle, DBInstance, DBBackupEngine,
                    DBStatisticsTickerType, DBStatisticsHistogramType, DBPinnableSlice,
                    DBCompressionType};
 use libc::{self, c_int, c_void, size_t};
-use rocksdb_options::{Options, BlobdbOptions, ReadOptions, UnsafeSnap, WriteOptions, FlushOptions,
-                      EnvOptions, RestoreOptions, IngestExternalFileOptions, HistogramData,
-                      CompactOptions};
+use rocksdb_options::{DBOptions, BlobdbOptions, ColumnFamilyOptions, ReadOptions, UnsafeSnap, WriteOptions,
+                      FlushOptions, EnvOptions, RestoreOptions, IngestExternalFileOptions,
+                      HistogramData, CompactOptions};
 use std::{fs, ptr, slice};
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -60,7 +60,8 @@ pub struct DB {
     inner: *mut DBInstance,
     cfs: BTreeMap<String, CFHandle>,
     path: String,
-    opts: Options,
+    opts: DBOptions,
+    _cf_opts: Vec<ColumnFamilyOptions>,
 }
 
 impl Debug for DB {
@@ -307,26 +308,33 @@ impl<'a> Range<'a> {
     }
 }
 
+pub struct KeyVersion {
+    pub key: String,
+    pub value: String,
+    pub seq: u64,
+    pub value_type: c_int,
+}
+
 impl DB {
     pub fn open_default(path: &str) -> Result<DB, String> {
-        let mut opts = Options::new();
+        let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         DB::open(opts, path)
     }
 
-    pub fn open_blobdb(db_opts: Options,
-                       blobdb_options: BlobdbOptions,
-                       path: &str)
-                       -> Result<DB, String> {
-        DB::open_blobdb_cf(db_opts, blobdb_options, path, &[], &[])
+    pub fn open_blobdb(db_opts: DBOptions,
+        blobdb_options: BlobdbOptions,
+        path: &str)
+        -> Result<DB, String> {
+        DB::open_blobdb_cf(db_opts, blobdb_options, path, vec![], vec![])
     }
 
-    pub fn open_blobdb_cf(db_opts: Options,
-                          blobdb_options: BlobdbOptions,
-                          path: &str,
-                          cfs: &[&str],
-                          cf_opts: &[&Options])
-                          -> Result<DB, String> {
+    pub fn open_blobdb_cf(db_opts: DBOptions,
+        blobdb_options: BlobdbOptions,
+        path: &str,
+        cfs: Vec<&str>,
+        cf_opts: Vec<ColumnFamilyOptions>)
+        -> Result<DB, String> {
         let cpath = match CString::new(path.as_bytes()) {
             Ok(c) => c,
             Err(_) => {
@@ -337,20 +345,19 @@ impl DB {
             return Err(format!("Failed to create rocksdb directory: \
                                 src/rocksdb.rs:                              \
                                 {:?}",
-                               e));
+            e));
         }
-
         if cfs.len() != cf_opts.len() {
             return Err(format!("cfs.len() and cf_opts.len() not match."));
         }
+        let mut cfs_v = cfs;
+        let mut cf_opts_v = cf_opts;
 
         let (db, cf_map) = {
-            let mut cfs_v = cfs.to_vec();
-            let mut cf_opts_v = cf_opts.to_vec();
             // Always open the default column family
             if !cfs_v.contains(&DEFAULT_COLUMN_FAMILY) {
                 cfs_v.push(DEFAULT_COLUMN_FAMILY);
-                cf_opts_v.push(&db_opts);
+                cf_opts_v.push(ColumnFamilyOptions::new());
             }
 
             // We need to store our CStrings in an intermediate vector
@@ -363,17 +370,16 @@ impl DB {
             let cfhandles: Vec<_> = cfs_v.iter().map(|_| ptr::null_mut()).collect();
 
             let cfopts: Vec<_> = cf_opts_v.iter()
-                .map(|x| x.inner as *const crocksdb_ffi::DBOptions)
-                .collect();
+            .map(|x| x.inner as *const crocksdb_ffi::Options)
+            .collect();
 
             let db = unsafe {
-                ffi_try!(crocksdb_open_blobdb_column_families(db_opts.inner,
-                                                              blobdb_options.inner,
-                                                              cpath.as_ptr(),
-                                                              cfs_v.len() as c_int,
-                                                              cfnames.as_ptr(),
-                                                              cfopts.as_ptr(),
-                                                              cfhandles.as_ptr()))
+                ffi_try!(crocksdb_open_blobdb_column_families(db_opts.inner, blobdb_options.inner,
+                                                       cpath.as_ptr(),
+                                                       cfs_v.len() as c_int,
+                                                       cfnames.as_ptr(),
+                                                       cfopts.as_ptr(),
+                                                       cfhandles.as_ptr()))
             };
 
             for handle in &cfhandles {
@@ -399,17 +405,18 @@ impl DB {
             cfs: cf_map,
             path: path.to_owned(),
             opts: db_opts,
+            _cf_opts: cf_opts_v,
         })
     }
 
-    pub fn open(opts: Options, path: &str) -> Result<DB, String> {
-        DB::open_cf(opts, path, &[], &[])
+    pub fn open(opts: DBOptions, path: &str) -> Result<DB, String> {
+        DB::open_cf(opts, path, vec![], vec![])
     }
 
-    pub fn open_cf(opts: Options,
+    pub fn open_cf(opts: DBOptions,
                    path: &str,
-                   cfs: &[&str],
-                   cf_opts: &[&Options])
+                   cfs: Vec<&str>,
+                   cf_opts: Vec<ColumnFamilyOptions>)
                    -> Result<DB, String> {
         let cpath = match CString::new(path.as_bytes()) {
             Ok(c) => c,
@@ -423,18 +430,17 @@ impl DB {
                                 {:?}",
                                e));
         }
-
         if cfs.len() != cf_opts.len() {
             return Err(format!("cfs.len() and cf_opts.len() not match."));
         }
+        let mut cfs_v = cfs;
+        let mut cf_opts_v = cf_opts;
 
         let (db, cf_map) = {
-            let mut cfs_v = cfs.to_vec();
-            let mut cf_opts_v = cf_opts.to_vec();
             // Always open the default column family
             if !cfs_v.contains(&DEFAULT_COLUMN_FAMILY) {
                 cfs_v.push(DEFAULT_COLUMN_FAMILY);
-                cf_opts_v.push(&opts);
+                cf_opts_v.push(ColumnFamilyOptions::new());
             }
 
             // We need to store our CStrings in an intermediate vector
@@ -447,7 +453,7 @@ impl DB {
             let cfhandles: Vec<_> = cfs_v.iter().map(|_| ptr::null_mut()).collect();
 
             let cfopts: Vec<_> = cf_opts_v.iter()
-                .map(|x| x.inner as *const crocksdb_ffi::DBOptions)
+                .map(|x| x.inner as *const crocksdb_ffi::Options)
                 .collect();
 
             let db = unsafe {
@@ -482,10 +488,11 @@ impl DB {
             cfs: cf_map,
             path: path.to_owned(),
             opts: opts,
+            _cf_opts: cf_opts_v,
         })
     }
 
-    pub fn destroy(opts: &Options, path: &str) -> Result<(), String> {
+    pub fn destroy(opts: &DBOptions, path: &str) -> Result<(), String> {
         let cpath = CString::new(path.as_bytes()).unwrap();
         unsafe {
             ffi_try!(crocksdb_destroy_db(opts.inner, cpath.as_ptr()));
@@ -493,7 +500,7 @@ impl DB {
         Ok(())
     }
 
-    pub fn repair(opts: Options, path: &str) -> Result<(), String> {
+    pub fn repair(opts: DBOptions, path: &str) -> Result<(), String> {
         let cpath = CString::new(path.as_bytes()).unwrap();
         unsafe {
             ffi_try!(crocksdb_repair_db(opts.inner, cpath.as_ptr()));
@@ -501,7 +508,7 @@ impl DB {
         Ok(())
     }
 
-    pub fn list_column_families(opts: &Options, path: &str) -> Result<Vec<String>, String> {
+    pub fn list_column_families(opts: &DBOptions, path: &str) -> Result<Vec<String>, String> {
         let cpath = match CString::new(path.as_bytes()) {
             Ok(c) => c,
             Err(_) => {
@@ -604,7 +611,10 @@ impl DB {
         self.get_cf_opt(cf, key, &ReadOptions::new())
     }
 
-    pub fn create_cf(&mut self, name: &str, opts: &Options) -> Result<&CFHandle, String> {
+    pub fn create_cf(&mut self,
+                     name: &str,
+                     cf_opts: ColumnFamilyOptions)
+                     -> Result<&CFHandle, String> {
         let cname = match CString::new(name.as_bytes()) {
             Ok(c) => c,
             Err(_) => {
@@ -614,8 +624,9 @@ impl DB {
         let cname_ptr = cname.as_ptr();
         unsafe {
             let cf_handler =
-                ffi_try!(crocksdb_create_column_family(self.inner, opts.inner, cname_ptr));
+                ffi_try!(crocksdb_create_column_family(self.inner, cf_opts.inner, cname_ptr));
             let handle = CFHandle { inner: cf_handler };
+            self._cf_opts.push(cf_opts);
             Ok(match self.cfs.entry(name.to_owned()) {
                 Entry::Occupied(mut e) => {
                     e.insert(handle);
@@ -1041,18 +1052,18 @@ impl DB {
         self.opts.get_statistics_histogram(hist_type)
     }
 
-    pub fn get_options(&self) -> Options {
+    pub fn get_options(&self) -> ColumnFamilyOptions {
         let cf = self.cf_handle("default").unwrap();
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_options_cf(self.inner, cf.inner);
-            Options::from_raw(inner)
+            ColumnFamilyOptions::from_raw(inner)
         }
     }
 
-    pub fn get_options_cf(&self, cf: &CFHandle) -> Options {
+    pub fn get_options_cf(&self, cf: &CFHandle) -> ColumnFamilyOptions {
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_options_cf(self.inner, cf.inner);
-            Options::from_raw(inner)
+            ColumnFamilyOptions::from_raw(inner)
         }
     }
 
@@ -1089,7 +1100,7 @@ impl DB {
     }
 
     pub fn backup_at(&self, path: &str) -> Result<BackupEngine, String> {
-        let backup_engine = BackupEngine::open(Options::new(), path).unwrap();
+        let backup_engine = BackupEngine::open(DBOptions::new(), path).unwrap();
         unsafe {
             ffi_try!(crocksdb_backup_engine_create_new_backup(backup_engine.inner, self.inner))
         }
@@ -1168,6 +1179,35 @@ impl DB {
                                                                 limit_keys.as_ptr(),
                                                                 limit_keys_lens.as_ptr()));
             Ok(TablePropertiesCollection::from_raw(props))
+        }
+    }
+
+    pub fn get_all_key_versions(&self,
+                                start_key: &[u8],
+                                end_key: &[u8])
+                                -> Result<Vec<KeyVersion>, String> {
+        unsafe {
+            let kvs = ffi_try!(crocksdb_get_all_key_versions(self.inner,
+                                                             start_key.as_ptr(),
+                                                             start_key.len() as size_t,
+                                                             end_key.as_ptr(),
+                                                             end_key.len() as size_t));
+            let size = crocksdb_ffi::crocksdb_keyversions_count(kvs) as usize;
+            let mut key_versions = Vec::with_capacity(size);
+            for i in 0..size {
+                key_versions.push(KeyVersion {
+                    key: CStr::from_ptr(crocksdb_ffi::crocksdb_keyversions_key(kvs, i))
+                        .to_string_lossy()
+                        .into_owned(),
+                    value: CStr::from_ptr(crocksdb_ffi::crocksdb_keyversions_value(kvs, i))
+                        .to_string_lossy()
+                        .into_owned(),
+                    seq: crocksdb_ffi::crocksdb_keyversions_seq(kvs, i),
+                    value_type: crocksdb_ffi::crocksdb_keyversions_type(kvs, i),
+                })
+            }
+            crocksdb_ffi::crocksdb_keyversions_destroy(kvs);
+            Ok(key_versions)
         }
     }
 }
@@ -1447,7 +1487,7 @@ pub struct BackupEngine {
 }
 
 impl BackupEngine {
-    pub fn open(opts: Options, path: &str) -> Result<BackupEngine, String> {
+    pub fn open(opts: DBOptions, path: &str) -> Result<BackupEngine, String> {
         let cpath = match CString::new(path.as_bytes()) {
             Ok(c) => c,
             Err(_) => {
@@ -1480,13 +1520,13 @@ impl Drop for BackupEngine {
 pub struct SstFileWriter {
     inner: *mut crocksdb_ffi::SstFileWriter,
     _env_opt: EnvOptions,
-    _opt: Options,
+    _opt: ColumnFamilyOptions,
 }
 
 unsafe impl Send for SstFileWriter {}
 
 impl SstFileWriter {
-    pub fn new(env_opt: EnvOptions, opt: Options) -> SstFileWriter {
+    pub fn new(env_opt: EnvOptions, opt: ColumnFamilyOptions) -> SstFileWriter {
         unsafe {
             SstFileWriter {
                 inner: crocksdb_ffi::crocksdb_sstfilewriter_create(env_opt.inner, opt.inner),
@@ -1496,7 +1536,7 @@ impl SstFileWriter {
         }
     }
 
-    pub fn new_cf(env_opt: EnvOptions, opt: Options, cf: &CFHandle) -> SstFileWriter {
+    pub fn new_cf(env_opt: EnvOptions, opt: ColumnFamilyOptions, cf: &CFHandle) -> SstFileWriter {
         unsafe {
             SstFileWriter {
                 inner: crocksdb_ffi::crocksdb_sstfilewriter_create_cf(env_opt.inner,
@@ -1585,7 +1625,7 @@ mod test {
         let path = TempDir::new("_rust_rocksdb_error").expect("");
         let path_str = path.path().to_str().unwrap();
         let db = DB::open_default(path_str).unwrap();
-        let opts = Options::new();
+        let opts = DBOptions::new();
         // The DB will still be open when we try to destroy and the lock should fail
         match DB::destroy(&opts, path_str) {
             Err(ref s) => {
@@ -1729,21 +1769,20 @@ mod test {
         {
             let mut cfs_opts = vec![];
             for _ in 0..cfs.len() {
-                cfs_opts.push(Options::new());
+                cfs_opts.push(ColumnFamilyOptions::new());
             }
-            let cfs_ref_opts: Vec<&Options> = cfs_opts.iter().collect();
 
-            let mut opts = Options::new();
+            let mut opts = DBOptions::new();
             opts.create_if_missing(true);
             let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
-            for (&cf, &cf_opts) in cfs.iter().zip(&cfs_ref_opts) {
-                if cf == "default" {
+            for (cf, cf_opts) in cfs.iter().zip(cfs_opts) {
+                if *cf == "default" {
                     continue;
                 }
                 db.create_cf(cf, cf_opts).unwrap();
             }
         }
-        let opts_list_cfs = Options::new();
+        let opts_list_cfs = DBOptions::new();
         let mut cfs_vec = DB::list_column_families(&opts_list_cfs, path.path().to_str().unwrap())
             .unwrap();
         cfs_vec.sort();
@@ -1791,7 +1830,7 @@ mod test {
         let log_path = format!("{}", Path::new(&db_path).join("log_path").display());
         fs::create_dir_all(&log_path).unwrap();
 
-        let mut opts = Options::new();
+        let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         opts.set_db_log_dir(&log_path);
 
@@ -1846,58 +1885,6 @@ mod test {
     }
 
     #[test]
-    fn test_delete_range() {
-        // Test `DB::delete_range()`
-        let path = TempDir::new("_rust_rocksdb_test_delete_range").expect("");
-        let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
-
-        // Prepare some data.
-        let prepare_data = || {
-            db.put(b"a", b"v1").unwrap();
-            let a = db.get(b"a");
-            assert_eq!(a.unwrap().unwrap(), b"v1");
-            db.put(b"b", b"v2").unwrap();
-            let b = db.get(b"b");
-            assert_eq!(b.unwrap().unwrap(), b"v2");
-            db.put(b"c", b"v3").unwrap();
-            let c = db.get(b"c");
-            assert_eq!(c.unwrap().unwrap(), b"v3");
-        };
-        prepare_data();
-
-        // Ensure delete range interface works to delete the specified range `[b"a", b"c")`.
-        db.delete_range(b"a", b"c").unwrap();
-
-        let check_data = || {
-            assert!(db.get(b"a").unwrap().is_none());
-            assert!(db.get(b"b").unwrap().is_none());
-            let c = db.get(b"c");
-            assert_eq!(c.unwrap().unwrap(), b"v3");
-        };
-        check_data();
-
-        // Test `DB::delete_range_cf()`
-        prepare_data();
-        let cf_handle = db.cf_handle("default").unwrap();
-        db.delete_range_cf(cf_handle, b"a", b"c").unwrap();
-        check_data();
-
-        // Test `WriteBatch::delete_range()`
-        prepare_data();
-        let batch = WriteBatch::new();
-        batch.delete_range(b"a", b"c").unwrap();
-        assert!(db.write(batch).is_ok());
-        check_data();
-
-        // Test `WriteBatch::delete_range_cf()`
-        prepare_data();
-        let batch = WriteBatch::new();
-        batch.delete_range_cf(cf_handle, b"a", b"c").unwrap();
-        assert!(db.write(batch).is_ok());
-        check_data();
-    }
-
-    #[test]
     fn test_pause_bg_work() {
         let path = TempDir::new("_rust_rocksdb_pause_bg_work").expect("");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
@@ -1944,7 +1931,7 @@ mod test {
             assert!(db.get(b"k2").unwrap().is_some());
             assert!(snap.get(b"k2").unwrap().is_none());
         }
-        let opts = Options::new();
+        let opts = DBOptions::new();
         assert!(DB::destroy(&opts, path).is_ok());
     }
 
@@ -1969,11 +1956,11 @@ mod test {
     #[test]
     fn flush_cf() {
         let path = TempDir::new("_rust_rocksdb_flush_cf").expect("");
-        let mut opts = Options::new();
+        let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
-        let opts = Options::new();
-        db.create_cf("cf", &opts).unwrap();
+        let cf_opts = ColumnFamilyOptions::new();
+        db.create_cf("cf", cf_opts).unwrap();
 
         let cf_handle = db.cf_handle("cf").unwrap();
         for i in 0..200 {
@@ -2002,5 +1989,29 @@ mod test {
                 _ => assert!(false),
             }
         }
+    }
+
+    #[test]
+    fn test_get_all_key_versions() {
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        let path = TempDir::new("_rust_rocksdb_get_all_key_version_test").expect("");
+        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+
+        let samples = vec![(b"key1".to_vec(), b"value1".to_vec()),
+                           (b"key2".to_vec(), b"value2".to_vec()),
+                           (b"key3".to_vec(), b"value3".to_vec()),
+                           (b"key4".to_vec(), b"value4".to_vec())];
+
+        // Put 4 keys.
+        for &(ref k, ref v) in &samples {
+            db.put(k, v).unwrap();
+            assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
+        }
+        db.flush(true).unwrap();
+        let key_versions = db.get_all_key_versions(b"key2", b"key4").unwrap();
+        assert_eq!(key_versions[1].key, "key3");
+        assert_eq!(key_versions[1].value, "value3");
+        assert_eq!(key_versions[1].seq, 3);
     }
 }

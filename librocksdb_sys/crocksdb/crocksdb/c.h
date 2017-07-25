@@ -125,6 +125,12 @@ typedef struct crocksdb_table_properties_collector_t
     crocksdb_table_properties_collector_t;
 typedef struct crocksdb_table_properties_collector_factory_t
     crocksdb_table_properties_collector_factory_t;
+typedef struct crocksdb_flushjobinfo_t crocksdb_flushjobinfo_t;
+typedef struct crocksdb_compactionjobinfo_t crocksdb_compactionjobinfo_t;
+typedef struct crocksdb_externalfileingestioninfo_t
+    crocksdb_externalfileingestioninfo_t;
+typedef struct crocksdb_eventlistener_t crocksdb_eventlistener_t;
+typedef struct crocksdb_keyversions_t crocksdb_keyversions_t;
 
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,
@@ -592,6 +598,67 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_block_based_table_factory
 extern C_ROCKSDB_LIBRARY_API size_t crocksdb_options_get_block_cache_usage(
     crocksdb_options_t *opt);
 
+/* Flush job info */
+
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_flushjobinfo_cf_name(
+    const crocksdb_flushjobinfo_t*, size_t*);
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_flushjobinfo_file_path(
+    const crocksdb_flushjobinfo_t*, size_t*);
+extern C_ROCKSDB_LIBRARY_API const crocksdb_table_properties_t*
+crocksdb_flushjobinfo_table_properties(const crocksdb_flushjobinfo_t*);
+
+/* Compaction job info */
+
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_compactionjobinfo_cf_name(
+    const crocksdb_compactionjobinfo_t*, size_t*);
+extern C_ROCKSDB_LIBRARY_API size_t
+crocksdb_compactionjobinfo_input_files_count(
+    const crocksdb_compactionjobinfo_t*);
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_compactionjobinfo_input_file_at(const crocksdb_compactionjobinfo_t*,
+                                         size_t pos, size_t*);
+extern C_ROCKSDB_LIBRARY_API size_t
+crocksdb_compactionjobinfo_output_files_count(
+    const crocksdb_compactionjobinfo_t*);
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_compactionjobinfo_output_file_at(const crocksdb_compactionjobinfo_t*,
+                                          size_t pos, size_t*);
+extern C_ROCKSDB_LIBRARY_API const crocksdb_table_properties_collection_t*
+crocksdb_compactionjobinfo_table_properties(
+    const crocksdb_compactionjobinfo_t*);
+
+/* External file ingestion info */
+
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_externalfileingestioninfo_cf_name(
+    const crocksdb_externalfileingestioninfo_t*, size_t*);
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_externalfileingestioninfo_internal_file_path(
+    const crocksdb_externalfileingestioninfo_t*, size_t*);
+extern C_ROCKSDB_LIBRARY_API const crocksdb_table_properties_t*
+crocksdb_externalfileingestioninfo_table_properties(
+    const crocksdb_externalfileingestioninfo_t*);
+
+/* Event listener */
+
+typedef void (*on_flush_completed_cb)(void*, crocksdb_t*,
+                                      const crocksdb_flushjobinfo_t*);
+typedef void (*on_compaction_completed_cb)(void*, crocksdb_t*,
+                                           const crocksdb_compactionjobinfo_t*);
+typedef void (*on_external_file_ingested_cb)(
+    void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
+crocksdb_eventlistener_create(
+    void* state_, void (*destructor_)(void*),
+    on_flush_completed_cb on_flush_completed,
+    on_compaction_completed_cb on_compaction_completed,
+    on_external_file_ingested_cb on_external_file_ingested);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_eventlistener_destroy(
+    crocksdb_eventlistener_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_add_eventlistener(
+    crocksdb_options_t*, crocksdb_eventlistener_t*);
+
 /* Cuckoo table options */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_cuckoo_table_options_t*
@@ -646,8 +713,8 @@ extern C_ROCKSDB_LIBRARY_API size_t crocksdb_options_get_compression_level_numbe
     crocksdb_options_t* opt);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_get_compression_per_level(
     crocksdb_options_t* opt, int *level_values);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_set_bottommost_compression(
-    crocksdb_options_t* opt, int c);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_set_bottommost_compression(crocksdb_options_t *opt, int c);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_create_if_missing(
     crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void
@@ -881,8 +948,8 @@ enum {
 };
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compression(
     crocksdb_options_t*, int);
-extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_compression(
-    crocksdb_options_t*);
+extern C_ROCKSDB_LIBRARY_API int
+crocksdb_options_get_compression(crocksdb_options_t *);
 
 enum {
   crocksdb_level_compaction = 0,
@@ -1375,6 +1442,31 @@ crocksdb_get_propeties_of_tables_in_range(
     const char* const* start_keys, const size_t* start_keys_lens,
     const char* const* limit_keys, const size_t* limit_keys_lens,
     char** errptr);
+
+/* Get All Key Versions */
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_keyversions_destroy(crocksdb_keyversions_t *kvs);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_keyversions_t *
+crocksdb_get_all_key_versions(crocksdb_t *db, const char *begin_key,
+                              size_t begin_keylen, const char *end_key,
+                              size_t end_keylen, char **errptr);
+
+extern C_ROCKSDB_LIBRARY_API size_t
+crocksdb_keyversions_count(const crocksdb_keyversions_t *kvs);
+
+extern C_ROCKSDB_LIBRARY_API const char *
+crocksdb_keyversions_key(const crocksdb_keyversions_t *kvs, int index);
+
+extern C_ROCKSDB_LIBRARY_API const char *
+crocksdb_keyversions_key(const crocksdb_keyversions_t *kvs, int index);
+
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_keyversions_seq(const crocksdb_keyversions_t *kvs, int index);
+
+extern C_ROCKSDB_LIBRARY_API int
+crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index);
 
 #ifdef __cplusplus
 }  /* end extern "C" */
