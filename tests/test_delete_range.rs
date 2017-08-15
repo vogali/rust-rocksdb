@@ -531,21 +531,32 @@ pub fn get_cf_handle<'a>(db: &'a DB, cf: &str) -> Result<&'a CFHandle, String> {
         .ok_or_else(|| format!("cf {} not found.", cf))
 }
 
-#[test]
-fn test_delete_range_prefix_bloom_case_1() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_1").expect("");
+fn create_cf_db(db_path: &str, cf_name: &str) -> DB {
+    let path = TempDir::new(db_path).expect("");
     let path_str = path.path().to_str().unwrap();
+
+    let mut bbto = BlockBasedOptions::new();
+    bbto.set_bloom_filter(10, false);
+    bbto.set_whole_key_filtering(false);
     let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
+    opts.create_if_missing(true);
+    cf_opts.set_block_based_table_factory(&bbto);
+
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
                               Box::new(FixedSuffixSliceTransform::new(3)))
         .unwrap_or_else(|err| panic!(format!("{:?}", err)));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let db = DB::open_cf(opts, path_str, vec![cf_name], vec![cf_opts]).unwrap();
+    db
+}
+
+#[test]
+fn test_delete_range_prefix_bloom_case_1() {
     let cf = "default";
-    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_1", cf);
 
     let samples_a = vec![(b"keya11111", b"value1"),
                          (b"keyb22222", b"value2"),
@@ -592,19 +603,8 @@ fn test_delete_range_prefix_bloom_case_1() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_2() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_2").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
-    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_2", cf);
     let handle = get_cf_handle(&db, cf).unwrap();
 
     let samples_a = vec![(b"keya11111", b"value1"),
@@ -617,7 +617,7 @@ fn test_delete_range_prefix_bloom_case_2() {
     }
     let before = gen_crc32_from_db(&db);
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen").expect("");
+    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_2_ingest_sst_gen").expect("");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -636,19 +636,7 @@ fn test_delete_range_prefix_bloom_case_2() {
                (b"keyc33333", None),
                (b"keyd44444", None)]);
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_2_2").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
-    let cf = "default";
-    let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db2 = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_2_2", cf);
     let handle2 = get_cf_handle(&db2, cf).unwrap();
 
     db2.ingest_external_file_cf(handle2, &ingest_opt, &[test_sstfile_str])
@@ -666,19 +654,8 @@ fn test_delete_range_prefix_bloom_case_2() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_3() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_3").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
-    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_3", cf);
     let handle = get_cf_handle(&db, cf).unwrap();
     let samples_a = vec![(b"keya11111", b"value1"),
                          (b"keyb22222", b"value2"),
@@ -701,19 +678,7 @@ fn test_delete_range_prefix_bloom_case_3() {
                (b"keyd44444", Some(b"value4")),
                (b"keye55555", Some(b"value5"))]);
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_3_2").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
-    let cf = "default";
-    let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db2 = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_3_2", cf);
     let handle2 = get_cf_handle(&db2, cf).unwrap();
     let samples_b = vec![(b"keyb22222", b"value2"), (b"keyc33333", b"value3")];
     for (k, v) in samples_b {
@@ -745,19 +710,8 @@ fn test_delete_range_prefix_bloom_case_3() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_4() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_4").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
-    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_4", cf);
     let handle = get_cf_handle(&db, cf).unwrap();
     let samples_a = vec![(b"keya11111", b"value1"),
                          (b"keyb22222", b"value2"),
@@ -780,19 +734,7 @@ fn test_delete_range_prefix_bloom_case_4() {
                (b"keyd44444", None),
                (b"keye55555", None)]);
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_4_2").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
-    let cf = "default";
-    let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db2 = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_4_2", cf);
     let handle2 = get_cf_handle(&db2, cf).unwrap();
 
 
@@ -827,19 +769,8 @@ fn test_delete_range_prefix_bloom_case_4() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_5() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_5").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
-    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_5", cf);
     let handle = get_cf_handle(&db, cf).unwrap();
     let samples_a = vec![(b"keya11111", b"value1"),
                          (b"keyb22222", b"value2"),
@@ -861,18 +792,7 @@ fn test_delete_range_prefix_bloom_case_5() {
                (b"keyd44444", None),
                (b"keye55555", None)]);
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_5_2").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
-    let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db2 = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_5_2", cf);
     let handle2 = get_cf_handle(&db2, cf).unwrap();
 
     let samples_b = vec![(b"keyd44444", b"value4"), (b"keye55555", b"value5")];
@@ -902,19 +822,8 @@ fn test_delete_range_prefix_bloom_case_5() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_6() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_6").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
-    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_6", cf);
     let handle = get_cf_handle(&db, cf).unwrap();
     let samples_a = vec![(b"keya11111", b"value1"),
                          (b"keyb22222", b"value2"),
@@ -938,18 +847,7 @@ fn test_delete_range_prefix_bloom_case_6() {
                (b"keyd44444", Some(b"value4")),
                (b"keye55555", Some(b"value5"))]);
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_6_2").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-    // Prefix extractor(trim the timestamp at tail) for write cf.
-    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
-                              Box::new(FixedSuffixSliceTransform::new(3)))
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
-    // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
-    let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let db2 = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_6_2", cf);
     let handle2 = get_cf_handle(&db2, cf).unwrap();
 
     let samples_b =
