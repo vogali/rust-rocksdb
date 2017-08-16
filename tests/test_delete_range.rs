@@ -535,26 +535,74 @@ fn create_cf_db(db_path: &str, cf_name: &str) -> DB {
     let path = TempDir::new(db_path).expect("");
     let path_str = path.path().to_str().unwrap();
 
-    let mut bbto = BlockBasedOptions::new();
-    bbto.set_bloom_filter(10, false);
-    bbto.set_whole_key_filtering(false);
+//    let mut bbto = BlockBasedOptions::new();
+//    bbto.set_bloom_filter(10, false);
+//    bbto.set_whole_key_filtering(false);
     let mut opts = DBOptions::new();
     let mut cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
-    cf_opts.set_block_based_table_factory(&bbto);
+//    cf_opts.set_block_based_table_factory(&bbto);
 
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
                               Box::new(FixedSuffixSliceTransform::new(3)))
         .unwrap_or_else(|err| panic!(format!("{:?}", err)));
     // Create prefix bloom filter for memtable.
-    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+//    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let db = DB::open_cf(opts, path_str, vec![cf_name], vec![cf_opts]).unwrap();
     db
 }
 
 #[test]
 fn test_delete_range_prefix_bloom_case_1() {
+    let cf = "default";
+    let db = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_1", cf);
+
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4")];
+    let handle = get_cf_handle(&db, cf).unwrap();
+    for (k, v) in samples_a {
+        db.put_cf(handle, k, v).unwrap();
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
+    }
+    let before = gen_crc32_from_db(&db);
+
+    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file");
+    let test_sstfile_str = test_sstfile.to_str().unwrap();
+    let ingest_opt = IngestExternalFileOptions::new();
+
+    let default_options = db.get_options();
+    gen_sst_from_db(default_options,
+                    db.cf_handle(cf),
+                    test_sstfile_str,
+                    &db);
+
+    db.delete_range_cf(handle, b"keya11111", b"keye55555").unwrap();
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"keya11111", None),
+               (b"keyb22222", None),
+               (b"keyc33333", None),
+               (b"keyd44444", None)]);
+
+    db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
+        .unwrap();
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", Some(b"value2")),
+               (b"keyc33333", Some(b"value3")),
+               (b"keyd44444", Some(b"value4"))]);
+
+    let after = gen_crc32_from_db(&db);
+    assert_eq!(before, after);
+}
+
+#[test]
+fn test_prefix_bloom_delete_after_ingest() {
     let cf = "default";
     let db = create_cf_db("_rust_rocksdb_test_delete_range_prefix_bloom_case_1", cf);
 
@@ -584,18 +632,25 @@ fn test_delete_range_prefix_bloom_case_1() {
     check_kv(&db,
              db.cf_handle(cf),
              &[(b"keya11111", None),
-               (b"keyb22222", None),
-               (b"keyc33333", None),
-               (b"keyd44444", None)]);
+                 (b"keyb22222", None),
+                 (b"keyc33333", None),
+                 (b"keyd44444", None)]);
 
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
     check_kv(&db,
              db.cf_handle(cf),
              &[(b"keya11111", Some(b"value1")),
-               (b"keyb22222", Some(b"value2")),
-               (b"keyc33333", Some(b"value3")),
-               (b"keyd44444", Some(b"value4"))]);
+                 (b"keyb22222", Some(b"value2")),
+                 (b"keyc33333", Some(b"value3")),
+                 (b"keyd44444", Some(b"value4"))]);
+
+    db.delete_cf(handle, b"keyb22222").unwrap();
+
+    let mut iter = db.iter();
+    iter.seek(SeekKey::Key(b"keya11112"));
+    assert!(iter.valid());
+    assert_ne!(iter.key(), b"keyb22222");
 
     let after = gen_crc32_from_db(&db);
     assert_eq!(before, after);
