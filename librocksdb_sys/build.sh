@@ -124,11 +124,11 @@ function compile_rocksdb() {
         return
     fi
 
-    version=5089a0289769db89285b9ca424849fee2d8c75c6
-    vernum=5089a0289769db89285b9ca424849fee2d8c75c6
+    version=b28e16f02b2d660300a7bf0287e114ca6e9f0bba
+    vernum=b28e16f02b2d660300a7bf0287e114ca6e9f0bba
     echo building rocksdb-$version
     rm -rf rocksdb rocksdb-$vernum
-    download https://github.com/zhangjinpeng1987/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz e93833b20dcbd3d6f3cfbba687652065
+    download https://github.com/zhangjinpeng1987/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz 4528af00e9be7646b309da2d4ab664b6
     tar xf rocksdb-$version.tar.gz
     wd=`pwd`
     mv rocksdb-$vernum rocksdb
