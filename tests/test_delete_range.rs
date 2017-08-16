@@ -596,6 +596,49 @@ fn test_delete_range_prefix_bloom_case_1() {
     assert_eq!(before, after);
 }
 
+
+#[test]
+fn test_prefix_bloom_case_get_after_flush() {
+    let cf = "default";
+    let path = TempDir::new("_rust_rocksdb_test_prefix_bloom_case_get_after_delete_range").expect("");
+    let path_str = path.path().to_str().unwrap();
+
+    let mut bbto = BlockBasedOptions::new();
+    bbto.set_bloom_filter(10, false);
+    bbto.set_whole_key_filtering(false);
+    let mut opts = DBOptions::new();
+    let mut cf_opts = ColumnFamilyOptions::new();
+    opts.create_if_missing(true);
+    cf_opts.set_block_based_table_factory(&bbto);
+
+    // Prefix extractor(trim the timestamp at tail) for write cf.
+    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
+                                 Box::new(FixedSuffixSliceTransform::new(3)))
+        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+    // Create prefix bloom filter for memtable.
+    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4")];
+    let handle = get_cf_handle(&db, cf).unwrap();
+    for (k, v) in samples_a {
+        db.put_cf(handle, k, v).unwrap();
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
+    }
+
+    db.flush(true).unwrap();
+    db.delete_range_cf(handle, b"keya11111", b"keye55555").unwrap();
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"keya11111", None),
+                 (b"keyb22222", None),
+                 (b"keyc33333", None),
+                 (b"keyd44444", None)]);
+}
+
 #[test]
 fn test_prefix_bloom_delete_after_ingest() {
     let cf = "default";
