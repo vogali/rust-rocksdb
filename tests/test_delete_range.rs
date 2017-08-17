@@ -675,7 +675,9 @@ fn test_prefix_bloom_delete_after_ingest() {
     let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen").expect("");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
-    let ingest_opt = IngestExternalFileOptions::new();
+    let mut ingest_opt = IngestExternalFileOptions::new();
+    ingest_opt.allow_global_seqno(true);
+    ingest_opt.allow_blocking_flush(true);
 
     let default_options = db.get_options();
     gen_sst_from_db(default_options,
@@ -702,7 +704,9 @@ fn test_prefix_bloom_delete_after_ingest() {
 
     db.delete_cf(handle, b"keyb22222").unwrap();
 
-    let mut iter = db.iter();
+    let mut ro = ReadOptions::new();
+    ro.set_total_order_seek(true);
+    let mut iter = db.iter_opt(ro);
     iter.seek(SeekKey::Key(b"keya11112"));
     assert!(iter.valid());
     assert_ne!(iter.key(), b"keyb22222");
