@@ -670,7 +670,6 @@ fn test_prefix_bloom_delete_after_ingest() {
         db.put_cf(handle, k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
-    let before = gen_crc32_from_db(&db);
 
     let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen").expect("");
     let test_sstfile = gen_path.path().join("test_sst_file");
@@ -710,9 +709,6 @@ fn test_prefix_bloom_delete_after_ingest() {
     iter.seek(SeekKey::Key(b"keya11112"));
     assert!(iter.valid());
     assert_ne!(iter.key(), b"keyb22222");
-
-    let after = gen_crc32_from_db(&db);
-    assert_eq!(before, after);
 }
 
 #[test]
