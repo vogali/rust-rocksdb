@@ -124,12 +124,12 @@ function compile_rocksdb() {
         return
     fi
 
-    version=v5.7.3
-    vernum=5.7.3
+    version=fix-delete-files-endpt-overlap
+    vernum=$version
     echo building rocksdb-$version
     rm -rf rocksdb rocksdb-$vernum
-    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz 539d606dc532ebc2e823a62a064e6be8
-    tar xf rocksdb-$version.tar.gz
+    download https://github.com/ajkr/rocksdb/archive/$version.zip rocksdb-$version.zip ef8298876aa14ab57323ef61f1dc6c24
+    unzip rocksdb-$version.zip
     wd=`pwd`
     mv rocksdb-$vernum rocksdb
     cd rocksdb
