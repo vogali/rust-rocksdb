@@ -124,14 +124,14 @@ function compile_rocksdb() {
         return
     fi
 
-    version=fix-delete-files-endpt-overlap
-    vernum=$version
+    vernum=5.7.3
+    version=pingcap-$vernum
     echo building rocksdb-$version
-    rm -rf rocksdb rocksdb-$vernum
-    download https://github.com/ajkr/rocksdb/archive/$version.zip rocksdb-$version.zip ef8298876aa14ab57323ef61f1dc6c24
+    rm -rf rocksdb rocksdb-$version
+    download https://github.com/pingcap/rocksdb/archive/pingcap/$vernum.zip rocksdb-$version.zip ac447792047b74e175c96a11f57a16e7
     unzip rocksdb-$version.zip
     wd=`pwd`
-    mv rocksdb-$vernum rocksdb
+    mv rocksdb-$version rocksdb
     cd rocksdb
     export EXTRA_CFLAGS="-fPIC -I${wd}/zlib-1.2.11 -I${wd}/bzip2-1.0.6 -I${wd}/snappy-1.1.1 -I${wd}/lz4-r131/lib -I${wd}/zstd-1.2.0/lib"
     export EXTRA_CXXFLAGS="-DZLIB -DBZIP2 -DSNAPPY -DLZ4 -DZSTD $EXTRA_CFLAGS"
