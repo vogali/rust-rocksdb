@@ -12,8 +12,8 @@
 // limitations under the License.
 
 use rocksdb::*;
-use tempdir::TempDir;
 use std::{thread, time};
+use tempdir::TempDir;
 
 #[test]
 fn test_delete_files_in_range_with_iter() {
@@ -50,7 +50,7 @@ fn test_delete_files_in_range_with_iter() {
         db.put(k.as_bytes(), v.as_bytes()).unwrap();
         assert_eq!(v.as_bytes(), &*db.get(k.as_bytes()).unwrap().unwrap());
     }
-    // sst2 [6, 9)
+    // sst3 [6, 9)
     db.flush(true).unwrap();
 
     // construct iterator before DeleteFilesInRange
