@@ -14,10 +14,7 @@
 use rocksdb::*;
 use tempdir::TempDir;
 
-#[test]
-fn test_delete_files_in_range_with_iter() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_files_in_range_with_iter").expect("");
-    let path_str = path.path().to_str().unwrap();
+fn initial_data(path: &str) -> DB {
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
@@ -25,7 +22,7 @@ fn test_delete_files_in_range_with_iter() {
     // DeleteFilesInRange ignore sst files in level 0,
     // this will makes all sst files fall into level 1.
     cf_opts.set_level_zero_file_num_compaction_trigger(1);
-    let db = DB::open_cf(opts, path_str, vec!["default"], vec![cf_opts]).unwrap();
+    let db = DB::open_cf(opts, path, vec!["default"], vec![cf_opts]).unwrap();
     for i in 0..3 {
         let k = format!("key{}", i);
         let v = format!("value{}", i);
@@ -52,6 +49,15 @@ fn test_delete_files_in_range_with_iter() {
     }
     // sst3 [6, 9)
     db.flush(true).unwrap();
+
+    db
+}
+
+#[test]
+fn test_delete_files_in_range_with_iter() {
+    let path = TempDir::new("_rust_rocksdb_test_delete_files_in_range_with_iter").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let db = initial_data(path_str);
 
     // construct iterator before DeleteFilesInRange
     let mut iter = db.iter();
@@ -74,40 +80,7 @@ fn test_delete_files_in_range_with_iter() {
 fn test_delete_files_in_range_with_snap() {
     let path = TempDir::new("_rust_rocksdb_test_delete_files_in_range_with_snap").expect("");
     let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut cf_opts = ColumnFamilyOptions::new();
-
-    // DeleteFilesInRange ignore sst files in level 0,
-    // this will makes all sst files fall into level 1.
-    cf_opts.set_level_zero_file_num_compaction_trigger(1);
-    let db = DB::open_cf(opts, path_str, vec!["default"], vec![cf_opts]).unwrap();
-    for i in 0..3 {
-        let k = format!("key{}", i);
-        let v = format!("value{}", i);
-        db.put(k.as_bytes(), v.as_bytes()).unwrap();
-        assert_eq!(v.as_bytes(), &*db.get(k.as_bytes()).unwrap().unwrap());
-    }
-    // sst1 [0, 3)
-    db.flush(true).unwrap();
-
-    for i in 3..6 {
-        let k = format!("key{}", i);
-        let v = format!("value{}", i);
-        db.put(k.as_bytes(), v.as_bytes()).unwrap();
-        assert_eq!(v.as_bytes(), &*db.get(k.as_bytes()).unwrap().unwrap());
-    }
-    // sst2 [3, 6)
-    db.flush(true).unwrap();
-
-    for i in 6..9 {
-        let k = format!("key{}", i);
-        let v = format!("value{}", i);
-        db.put(k.as_bytes(), v.as_bytes()).unwrap();
-        assert_eq!(v.as_bytes(), &*db.get(k.as_bytes()).unwrap().unwrap());
-    }
-    // sst3 [6, 9)
-    db.flush(true).unwrap();
+    let db = initial_data(path_str);
 
     // construct snapshot before DeleteFilesInRange
     let snap = db.snapshot();
