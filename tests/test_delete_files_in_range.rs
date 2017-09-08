@@ -22,7 +22,8 @@ fn test_delete_files_in_range_with_iter() {
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
 
-    // DeleteFilesInRange ignore sst files in level 0.
+    // DeleteFilesInRange ignore sst files in level 0,
+    // this will makes all sst files fall into level 1.
     cf_opts.set_level_zero_file_num_compaction_trigger(1);
     let db = DB::open_cf(opts, path_str, vec!["default"], vec![cf_opts]).unwrap();
     for i in 0..3 {
@@ -77,7 +78,8 @@ fn test_delete_files_in_range_with_snap() {
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
 
-    // DeleteFilesInRange ignore sst files in level 0.
+    // DeleteFilesInRange ignore sst files in level 0,
+    // this will makes all sst files fall into level 1.
     cf_opts.set_level_zero_file_num_compaction_trigger(1);
     let db = DB::open_cf(opts, path_str, vec!["default"], vec![cf_opts]).unwrap();
     for i in 0..3 {
