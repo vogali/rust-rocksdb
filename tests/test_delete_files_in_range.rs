@@ -12,7 +12,6 @@
 // limitations under the License.
 
 use rocksdb::*;
-use std::{thread, time};
 use tempdir::TempDir;
 
 #[test]
@@ -55,13 +54,12 @@ fn test_delete_files_in_range_with_iter() {
 
     // construct iterator before DeleteFilesInRange
     let mut iter = db.iter();
-    assert!(iter.seek(SeekKey::Start));
 
     // delete sst2
     db.delete_file_in_range(b"key2", b"key7").unwrap();
-    thread::sleep(time::Duration::from_secs(1));
 
     let mut count = 0;
+    assert!(iter.seek(SeekKey::Start));
     while iter.valid() {
         iter.next();
         count = count + 1;
@@ -114,7 +112,6 @@ fn test_delete_files_in_range_with_snap() {
 
     // delete sst2
     db.delete_file_in_range(b"key2", b"key7").unwrap();
-    thread::sleep(time::Duration::from_secs(1));
 
     let mut iter = snap.iter();
     assert!(iter.seek(SeekKey::Start));
