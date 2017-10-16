@@ -241,7 +241,7 @@ struct crocksdb_comparator_t : public Comparator {
   // No-ops since the C binding does not support key shortening methods.
   virtual void FindShortestSeparator(std::string*,
                                      const Slice&) const override {}
-  virtual void FindShortSuccessor(std::string* key) const override {}
+  virtual void FindShortSuccessor(std::string*) const override {}
 };
 
 struct crocksdb_filterpolicy_t : public FilterPolicy {
@@ -356,7 +356,7 @@ struct crocksdb_mergeoperator_t : public MergeOperator {
   virtual bool PartialMergeMulti(const Slice& key,
                                  const std::deque<Slice>& operand_list,
                                  std::string* new_value,
-                                 Logger* logger) const override {
+                                 Logger*) const override {
     size_t operand_count = operand_list.size();
     std::vector<const char*> operand_pointers(operand_count);
     std::vector<size_t> operand_sizes(operand_count);
@@ -1558,6 +1558,11 @@ void crocksdb_block_based_options_set_cache_index_and_filter_blocks(
   options->rep.cache_index_and_filter_blocks = v;
 }
 
+void crocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(
+    crocksdb_block_based_table_options_t* options, unsigned char v) {
+  options->rep.cache_index_and_filter_blocks_with_high_priority = v;
+}
+
 void crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
     crocksdb_block_based_table_options_t* options, unsigned char v) {
   options->rep.pin_l0_filter_and_index_blocks_in_cache = v;
@@ -1967,9 +1972,6 @@ void crocksdb_options_set_level0_stop_writes_trigger(
   opt->rep.level0_stop_writes_trigger = n;
 }
 
-void crocksdb_options_set_max_mem_compaction_level(crocksdb_options_t* opt,
-                                                  int n) {}
-
 void crocksdb_options_set_wal_recovery_mode(crocksdb_options_t* opt,int mode) {
   opt->rep.wal_recovery_mode = static_cast<WALRecoveryMode>(mode);
 }
@@ -2076,10 +2078,6 @@ void crocksdb_options_set_manifest_preallocation_size(
     crocksdb_options_t* opt, size_t v) {
   opt->rep.manifest_preallocation_size = v;
 }
-
-// noop
-void crocksdb_options_set_purge_redundant_kvs_while_flush(crocksdb_options_t* opt,
-                                                         unsigned char v) {}
 
 void crocksdb_options_set_allow_mmap_reads(
     crocksdb_options_t* opt, unsigned char v) {
@@ -2231,11 +2229,6 @@ void crocksdb_options_set_table_cache_numshardbits(
 void crocksdb_options_set_writable_file_max_buffer_size(
     crocksdb_options_t* opt, int v) {
   opt->rep.writable_file_max_buffer_size = v;
-}
-
-void crocksdb_options_set_table_cache_remove_scan_count_limit(
-    crocksdb_options_t* opt, int v) {
-  // this option is deprecated
 }
 
 void crocksdb_options_set_arena_block_size(
@@ -2777,9 +2770,10 @@ void crocksdb_flushoptions_set_wait(
   opt->rep.wait = v;
 }
 
-crocksdb_cache_t* crocksdb_cache_create_lru(size_t capacity) {
+crocksdb_cache_t* crocksdb_cache_create_lru(size_t capacity,
+  int num_shard_bits, unsigned char strict_capacity_limit, double high_pri_pool_ratio) {
   crocksdb_cache_t* c = new crocksdb_cache_t;
-  c->rep = NewLRUCache(capacity);
+  c->rep = NewLRUCache(capacity, num_shard_bits, strict_capacity_limit, high_pri_pool_ratio);
   return c;
 }
 
@@ -2848,12 +2842,6 @@ crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create_cf(
 void crocksdb_sstfilewriter_open(crocksdb_sstfilewriter_t* writer,
                                 const char* name, char** errptr) {
   SaveError(errptr, writer->rep->Open(std::string(name)));
-}
-
-void crocksdb_sstfilewriter_add(crocksdb_sstfilewriter_t *writer,
-                                const char *key, size_t keylen, const char *val,
-                                size_t vallen, char **errptr) {
-  SaveError(errptr, writer->rep->Add(Slice(key, keylen), Slice(val, vallen)));
 }
 
 void crocksdb_sstfilewriter_put(crocksdb_sstfilewriter_t *writer,
@@ -3314,8 +3302,8 @@ uint64_t crocksdb_table_properties_get_u64(
       return rep.data_size;
     case kColumnFamilyID:
       return rep.column_family_id;
+    default: return 0;
   }
-  return 0;
 }
 
 const char* crocksdb_table_properties_get_str(
@@ -3344,8 +3332,9 @@ const char* crocksdb_table_properties_get_str(
   case kCompressionName:
     *slen = rep.compression_name.size();
     return rep.compression_name.data();
+  default:
+    return nullptr;
   }
-  return nullptr;
 }
 
 const crocksdb_user_collected_properties_t*
