@@ -266,6 +266,57 @@ fn test_seek_for_prev() {
 }
 
 #[test]
+fn test_prefix_same_as_start() {
+    let path = TempDir::new("_rust_rocksdb_prefix_same_as_start").expect("");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    {
+        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+        let writeopts = WriteOptions::new();
+        db.put_opt(b"k1-0", b"a", &writeopts).unwrap();
+        db.put_opt(b"k1-1", b"b", &writeopts).unwrap();
+        db.put_opt(b"k1-3", b"d", &writeopts).unwrap();
+
+        let mut readopts = ReadOptions::new();
+        readopts.set_prefix_same_as_start(true);
+        let mut iter = db.iter_opt(readopts);
+
+        iter.seek_for_prev(SeekKey::Key(b"k1-2"));
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-1");
+        assert_eq!(iter.value(), b"b");
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Key(b"k1-3"));
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-3");
+        assert_eq!(iter.value(), b"d");
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Start);
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-0");
+        assert_eq!(iter.value(), b"a");
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::End);
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-3");
+        assert_eq!(iter.value(), b"d");
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Key(b"k0-0"));
+        assert!(!iter.valid());
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Key(b"k2-0"));
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-3");
+        assert_eq!(iter.value(), b"d");
+    }
+}
+
+#[test]
 fn read_with_upper_bound() {
     let path = TempDir::new("_rust_rocksdb_read_with_upper_bound_test").expect("");
     let mut opts = DBOptions::new();
