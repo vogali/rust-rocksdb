@@ -309,7 +309,8 @@ fn test_prefix_same_as_start() {
     // assert!(!iter.valid());
     // the iterator here is supposed to be invalid, however the line below passed test,
     // assert_eq!(b"k1-0", iter.key());
-    // it should be a rocksdb bug.
+    // it should be a rocksdb bug,
+    // see https://github.com/facebook/rocksdb/issues/3133 for detail.
 }
 
 #[test]
