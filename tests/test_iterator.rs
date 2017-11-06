@@ -307,7 +307,9 @@ fn test_prefix_same_as_start() {
 
     iter.seek_for_prev(SeekKey::Key(b"k2-0"));
     // assert!(!iter.valid());
-    assert_eq!(b"k1-0", iter.key());
+    // the iterator here is supposed to be invalid, however the line below passed test,
+    // assert_eq!(b"k1-0", iter.key());
+    // it should be a rocksdb bug.
 }
 
 #[test]
