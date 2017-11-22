@@ -31,6 +31,7 @@
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/write_batch.h"
+#include "rocksdb/utilities/blob_db.h"
 #include <stdlib.h>
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
@@ -108,6 +109,8 @@ using rocksdb::TablePropertiesCollector;
 using rocksdb::TablePropertiesCollectorFactory;
 using rocksdb::KeyVersion;
 using rocksdb::DbPath;
+using rocksdb::blob_db::BlobDB;
+using rocksdb::blob_db::BlobDBOptions;
 
 using std::shared_ptr;
 
@@ -463,8 +466,9 @@ crocksdb_t* crocksdb_open(
     const crocksdb_options_t* options,
     const char* name,
     char** errptr) {
-  DB* db;
-  if (SaveError(errptr, DB::Open(options->rep, std::string(name), &db))) {
+  BlobDB *db;
+  BlobDBOptions blob_db_options;
+  if (SaveError(errptr, BlobDB::Open(options->rep, blob_db_options, std::string(name), &db))) {
     return nullptr;
   }
   crocksdb_t* result = new crocksdb_t;
@@ -599,9 +603,10 @@ crocksdb_t* crocksdb_open_column_families(
         ColumnFamilyOptions(column_family_options[i]->rep)));
   }
 
-  DB* db;
+  BlobDB *db;
+  BlobDBOptions blob_db_options;
   std::vector<ColumnFamilyHandle*> handles;
-  if (SaveError(errptr, DB::Open(DBOptions(db_options->rep),
+  if (SaveError(errptr, BlobDB::Open(DBOptions(db_options->rep), blob_db_options,
           std::string(name), column_families, &handles, &db))) {
     return nullptr;
   }
