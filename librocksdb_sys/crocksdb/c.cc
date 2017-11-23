@@ -466,7 +466,7 @@ crocksdb_t* crocksdb_open(
     const crocksdb_options_t* options,
     const char* name,
     char** errptr) {
-  DB *db;
+  DB* db;
   if (SaveError(errptr, DB::Open(options->rep, std::string(name), &db))) {
     return nullptr;
   }
@@ -602,10 +602,11 @@ crocksdb_t* crocksdb_open_column_families(
         ColumnFamilyOptions(column_family_options[i]->rep)));
   }
 
-  DB* db;
+  BlobDB* db;
+  BlobDBOptions blob_options;
   std::vector<ColumnFamilyHandle*> handles;
-  if (SaveError(errptr, DB::Open(DBOptions(db_options->rep),
-    std::string(name), column_families, &handles, &db))) {
+  if (SaveError(errptr, BlobDB::Open(DBOptions(db_options->rep), blob_options,
+      std::string(name), column_families, &handles, &db))) {
     return nullptr;
   }
 
