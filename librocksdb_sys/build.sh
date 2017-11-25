@@ -124,10 +124,10 @@ function compile_rocksdb() {
         return
     fi
 
-    echo building rocksdb-blobdb
-    git clone -b extract_blobdb https://github.com/UncP/rocksdb
+    echo building blobdb
+    git clone -b extract_blobdb https://github.com/UncP/rocksdb blobdb
     wd=`pwd`
-    cd rocksdb
+    cd blobdb
     export EXTRA_CFLAGS="-fPIC -I${wd}/zlib-1.2.11 -I${wd}/bzip2-1.0.6 -I${wd}/snappy-1.1.1 -I${wd}/lz4-r131/lib -I${wd}/zstd-1.2.0/lib"
     export EXTRA_CXXFLAGS="-DZLIB -DBZIP2 -DSNAPPY -DLZ4 -DZSTD $EXTRA_CFLAGS"
     DISABLE_JEMALLOC=1 make static_lib -j $con
