@@ -125,7 +125,7 @@ function compile_rocksdb() {
     fi
 
     echo building blobdb
-    git clone -b extract_blobdb https://github.com/UncP/rocksdb blobdb
+    git clone https://github.com/UncP/blobdb
     wd=`pwd`
     cd blobdb
     export EXTRA_CFLAGS="-fPIC -I${wd}/zlib-1.2.11 -I${wd}/bzip2-1.0.6 -I${wd}/snappy-1.1.1 -I${wd}/lz4-r131/lib -I${wd}/zstd-1.2.0/lib"
