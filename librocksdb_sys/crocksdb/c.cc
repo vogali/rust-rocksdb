@@ -31,6 +31,7 @@
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/write_batch.h"
+#include "rocksdb/sst_file_reader.h"
 #include <stdlib.h>
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
@@ -81,6 +82,7 @@ using rocksdb::Slice;
 using rocksdb::SliceParts;
 using rocksdb::SliceTransform;
 using rocksdb::Snapshot;
+using rocksdb::SstFileReader;
 using rocksdb::SstFileWriter;
 using rocksdb::ExternalSstFileInfo;
 using rocksdb::Status;
@@ -145,6 +147,7 @@ struct crocksdb_livefiles_t       { std::vector<LiveFileMetaData> rep; };
 struct crocksdb_column_family_handle_t  { ColumnFamilyHandle* rep; };
 struct crocksdb_envoptions_t      { EnvOptions        rep; };
 struct crocksdb_ingestexternalfileoptions_t  { IngestExternalFileOptions rep; };
+struct crocksdb_sstfilereader_t   { SstFileReader*    rep; };
 struct crocksdb_sstfilewriter_t   { SstFileWriter*    rep; };
 struct crocksdb_externalsstfileinfo_t   { ExternalSstFileInfo rep; };
 struct crocksdb_ratelimiter_t     { RateLimiter*      rep; };
@@ -3517,6 +3520,16 @@ crocksdb_table_properties_collection_iter_value(
       it->cur_->second.get());
 }
 
+uint64_t crocksdb_table_properties_get_property_offset(
+    const crocksdb_table_properties_t* props, const char *key, size_t len) {
+  auto iter = props->rep->properties_offsets.find(std::string(key, len));
+  if (iter == props->rep->properties_offsets.end()) {
+    return 0;
+  } else {
+    return iter->second;
+  }
+}
+
 /* Table Properties Collector */
 
 struct crocksdb_table_properties_collector_t : public TablePropertiesCollector {
@@ -3691,7 +3704,7 @@ void crocksdb_set_bottommost_compression(crocksdb_options_t *opt, int c) {
 // Get All Key Versions
 void crocksdb_keyversions_destroy(crocksdb_keyversions_t *kvs) { delete kvs; }
 
-crocksdb_keyversions_t *
+crocksdb_keyversions_t*
 crocksdb_get_all_key_versions(crocksdb_t *db, const char *begin_key,
                               size_t begin_keylen, const char *end_key,
                               size_t end_keylen, char **errptr) {
@@ -3723,6 +3736,26 @@ uint64_t crocksdb_keyversions_seq(const crocksdb_keyversions_t *kvs,
 
 int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
   return kvs->rep[index].type;
+}
+
+/* Sst File Reader */
+crocksdb_sstfilereader_t*
+crocksdb_sstfilereader_create(const char *file, size_t len, unsigned char verify_checksum) {
+  crocksdb_sstfilereader_t* reader = new crocksdb_sstfilereader_t;
+  reader->rep = new SstFileReader(std::string(file, len), verify_checksum);
+  return reader;
+}
+
+crocksdb_table_properties_t*
+crocksdb_sstfilereader_read_table_properties(crocksdb_sstfilereader_t *reader) {
+  std::shared_ptr<crocksdb_table_properties_t> props(new crocksdb_table_properties_t);
+  reader->rep->ReadTableProperties(&props);
+  return props.get();
+}
+
+void crocksdb_sstfilereader_destroy(crocksdb_sstfilereader_t* reader) {
+  delete reader->rep;
+  delete reader;
 }
 
 }  // end extern "C"

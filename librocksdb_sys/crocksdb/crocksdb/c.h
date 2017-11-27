@@ -108,6 +108,7 @@ typedef struct crocksdb_livefiles_t     crocksdb_livefiles_t;
 typedef struct crocksdb_column_family_handle_t crocksdb_column_family_handle_t;
 typedef struct crocksdb_envoptions_t      crocksdb_envoptions_t;
 typedef struct crocksdb_ingestexternalfileoptions_t crocksdb_ingestexternalfileoptions_t;
+typedef struct crocksdb_sstfilereader_t   crocksdb_sstfilereader_t;
 typedef struct crocksdb_sstfilewriter_t   crocksdb_sstfilewriter_t;
 typedef struct crocksdb_externalsstfileinfo_t   crocksdb_externalsstfileinfo_t;
 typedef struct crocksdb_ratelimiter_t     crocksdb_ratelimiter_t;
@@ -1468,6 +1469,10 @@ extern C_ROCKSDB_LIBRARY_API const crocksdb_table_properties_t*
 crocksdb_table_properties_collection_iter_value(
     const crocksdb_table_properties_collection_iterator_t*);
 
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_table_properties_get_property_offset(
+    const crocksdb_table_properties_t* props, const char *key, size_t len);
+
 /* Table Properties Collector */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_table_properties_collector_t*
@@ -1543,6 +1548,16 @@ crocksdb_keyversions_seq(const crocksdb_keyversions_t *kvs, int index);
 
 extern C_ROCKSDB_LIBRARY_API int
 crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index);
+
+/* Sst File Reader */
+extern C_ROCKSDB_LIBRARY_API crocksdb_sstfilereader_t*
+crocksdb_sstfilereader_create(const char *file, size_t len, unsigned char verify_checksum);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_table_properties_t*
+crocksdb_sstfilereader_read_table_properties(crocksdb_sstfilereader_t *reader);
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_sstfilereader_destroy(crocksdb_sstfilereader_t* reader);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

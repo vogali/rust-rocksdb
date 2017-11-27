@@ -36,6 +36,7 @@ pub enum DBComparator {}
 pub enum DBFlushOptions {}
 pub enum DBCompactionFilter {}
 pub enum EnvOptions {}
+pub enum SstFileReader {}
 pub enum SstFileWriter {}
 pub enum ExternalSstFileInfo {}
 pub enum IngestExternalFileOptions {}
@@ -1127,6 +1128,17 @@ extern "C" {
     pub fn crocksdb_sstfilewriter_file_size(writer: *mut SstFileWriter) -> uint64_t;
     pub fn crocksdb_sstfilewriter_destroy(writer: *mut SstFileWriter);
 
+    // SstFileReader
+    pub fn crocksdb_sstfilereader_create(
+        path: *const u8,
+        len: size_t,
+        verify_checksum: c_uchar,
+    ) -> *mut SstFileReader;
+    pub fn crocksdb_sstfilereader_read_table_properties(
+        reader: *mut SstFileReader,
+    ) -> *mut DBTableProperties;
+    pub fn crocksdb_sstfilereader_destroy(reader: *mut SstFileReader);
+
     // ExternalSstFileInfo
     pub fn crocksdb_externalsstfileinfo_create() -> *mut ExternalSstFileInfo;
     pub fn crocksdb_externalsstfileinfo_destroy(info: *mut ExternalSstFileInfo);
@@ -1275,6 +1287,12 @@ extern "C" {
     pub fn crocksdb_table_properties_get_user_properties(
         props: *const DBTableProperties,
     ) -> *const DBUserCollectedProperties;
+
+    pub fn crocksdb_table_properties_get_property_offset(
+        props: *const DBTableProperties,
+        key: *const u8,
+        len: size_t,
+    ) -> u64;
 
     pub fn crocksdb_user_collected_properties_get(
         props: *const DBUserCollectedProperties,

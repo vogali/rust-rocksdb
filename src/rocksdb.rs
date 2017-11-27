@@ -28,7 +28,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::from_utf8;
-use table_properties::TablePropertiesCollection;
+use table_properties::{TableProperties, TablePropertiesCollection};
 
 pub struct CFHandle {
     inner: *mut DBCFHandle,
@@ -1777,6 +1777,35 @@ impl SstFileWriter {
 impl Drop for SstFileWriter {
     fn drop(&mut self) {
         unsafe { crocksdb_ffi::crocksdb_sstfilewriter_destroy(self.inner) }
+    }
+}
+
+pub struct SstFileReader {
+    inner: *mut crocksdb_ffi::SstFileReader;
+}
+
+unsafe impl Send for SstFileReader {}
+
+impl SstFileReader {
+    pub fn new(path: *const u8, len: size_t, verify_checksum: c_uchar) -> SstFileReader {
+        unsafe {
+            SstFileReader {
+                inner: crocksdb_ffi::crocksdb_sstfilereader_create(path, len, verify_checksum),
+            }
+        }
+    }
+
+    pub fn get_properties(&mut self) -> TableProperties {
+        unsafe {
+            let props = crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(self.inner);
+            TableProperties::from_ptr(props)
+        }
+    }
+}
+
+impl Drop for SstFileReader {
+    fn drop(&mut self) {
+        unsafe { crocksdb_ffi::crocksdb_sstfilereader_destroy(self.inner) }
     }
 }
 
