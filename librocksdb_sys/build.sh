@@ -124,12 +124,10 @@ function compile_rocksdb() {
         return
     fi
 
-    version=33efdde8316759f1efc6a2a228c5efcf01f09cbc
     vernum=33efdde8316759f1efc6a2a228c5efcf01f09cbc
-    echo building rocksdb-$version
+    echo building rocksdb
     rm -rf rocksdb rocksdb-$vernum
-    download https://github.com/pingcap/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz d5cc6d3f981015dbdfd194a0e0bae68c
-    tar xf rocksdb-$version.tar.gz
+    git clone -b zhangjinpeng/sst-reader https://github.com/zhangjinpeng1987/rocksdb rocksdb-$vernum
     wd=`pwd`
     mv rocksdb-$vernum rocksdb
     cd rocksdb

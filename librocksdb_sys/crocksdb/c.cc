@@ -3522,8 +3522,8 @@ crocksdb_table_properties_collection_iter_value(
 
 uint64_t crocksdb_table_properties_get_property_offset(
     const crocksdb_table_properties_t* props, const char *key, size_t len) {
-  auto iter = props->rep->properties_offsets.find(std::string(key, len));
-  if (iter == props->rep->properties_offsets.end()) {
+  auto iter = props->rep.properties_offsets.find(std::string(key, len));
+  if (iter == props->rep.properties_offsets.end()) {
     return 0;
   } else {
     return iter->second;
@@ -3748,9 +3748,9 @@ crocksdb_sstfilereader_create(const char *file, size_t len, unsigned char verify
 
 crocksdb_table_properties_t*
 crocksdb_sstfilereader_read_table_properties(crocksdb_sstfilereader_t *reader) {
-  std::shared_ptr<crocksdb_table_properties_t> props(new crocksdb_table_properties_t);
+  std::shared_ptr<const TableProperties> props(new TableProperties);
   reader->rep->ReadTableProperties(&props);
-  return props.get();
+  return reinterpret_cast<crocksdb_table_properties_t*>(props.get());
 }
 
 void crocksdb_sstfilereader_destroy(crocksdb_sstfilereader_t* reader) {
