@@ -1800,9 +1800,11 @@ impl SstFileReader {
         }
     }
 
-    pub unsafe fn get_properties<'a>(&mut self) -> &'a TableProperties {
-        let props = crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(self.inner);
-        TableProperties::from_ptr(props)
+    pub fn get_properties<'a>(&mut self) -> &'a TableProperties {
+        unsafe {
+            let props = crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(self.inner);
+            TableProperties::from_ptr(props)
+        }
     }
 }
 

@@ -26,14 +26,14 @@ fn test_sst_file_reader() {
         &[(b"k1", b"v1"), (b"k2", b"v2")],
     );
 
-    let mut reader = SstFileReader(sstfile_str.as_bytes(), 0);
+    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), 0);
     let props = reader.get_properties();
     assert_eq!(props.raw_key_size(), 2);
     assert_eq!(props.raw_value_size(), 2);
     let user_props = props.user_collected_properties();
     let seqno_str = user_props
-        .get(b"rocksdb.external_sst_file.global_seqno")
+        .get("rocksdb.external_sst_file.global_seqno")
         .unwrap();
     assert_eq!(seqno_str, b"0");
-    assert!(props.get_property_offset(b"rocksdb.external_sst_file.global_seqno"));
+    assert!(props.get_property_offset(b"rocksdb.external_sst_file.global_seqno") > 0);
 }
