@@ -1130,7 +1130,8 @@ extern "C" {
 
     // SstFileReader
     pub fn crocksdb_sstfilereader_create(
-        path: &[u8],
+        path: *const u8,
+        len: size_t,
         verify_checksum: c_uchar,
     ) -> *mut SstFileReader;
     pub fn crocksdb_sstfilereader_read_table_properties(
