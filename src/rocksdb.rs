@@ -16,7 +16,7 @@
 use crocksdb_ffi::{self, DBBackupEngine, DBCFHandle, DBCompressionType, DBInstance,
                    DBPinnableSlice, DBStatisticsHistogramType, DBStatisticsTickerType,
                    DBWriteBatch};
-use libc::{self, c_int, c_void, size_t};
+use libc::{self, c_int, c_uchar, c_void, size_t};
 use rocksdb_options::{ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions, DBOptions,
                       EnvOptions, FlushOptions, HistogramData, IngestExternalFileOptions,
                       ReadOptions, RestoreOptions, UnsafeSnap, WriteOptions};
@@ -1788,19 +1788,21 @@ pub struct SstFileReader {
 unsafe impl Send for SstFileReader {}
 
 impl SstFileReader {
-    pub fn new(path: *const u8, len: size_t, verify_checksum: c_uchar) -> SstFileReader {
+    pub fn new(path: &[u8], verify_checksum: c_uchar) -> SstFileReader {
         unsafe {
             SstFileReader {
-                inner: crocksdb_ffi::crocksdb_sstfilereader_create(path, len, verify_checksum),
+                inner: crocksdb_ffi::crocksdb_sstfilereader_create(
+                    path.as_ptr(),
+                    path.len(),
+                    verify_checksum,
+                ),
             }
         }
     }
 
-    pub fn get_properties(&mut self) -> TableProperties {
-        unsafe {
-            let props = crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(self.inner);
-            TableProperties::from_ptr(props)
-        }
+    pub unsafe fn get_properties<'a>(&mut self) -> &'a TableProperties {
+        let props = crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(self.inner);
+        TableProperties::from_ptr(props)
     }
 }
 

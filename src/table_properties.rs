@@ -226,7 +226,7 @@ impl TableProperties {
     pub fn get_property_offset(&self, prop: &[u8]) -> u64 {
         unsafe {
             crocksdb_ffi::crocksdb_table_properties_get_property_offset(
-                self.inner,
+                &self.inner,
                 prop.as_ptr(),
                 prop.len(),
             )
