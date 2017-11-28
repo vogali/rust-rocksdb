@@ -19,3 +19,4 @@ mod test_delete_range;
 mod test_delete_files_in_range;
 mod test_read_only;
 mod test_rate_limiter;
+mod test_sst_file_reader;

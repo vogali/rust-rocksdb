@@ -3750,7 +3750,7 @@ crocksdb_table_properties_t*
 crocksdb_sstfilereader_read_table_properties(crocksdb_sstfilereader_t *reader) {
   std::shared_ptr<const TableProperties> props(new TableProperties);
   reader->rep->ReadTableProperties(&props);
-  return reinterpret_cast<crocksdb_table_properties_t*>(props.get());
+  return reinterpret_cast<crocksdb_table_properties_t*>(const_cast<TableProperties*>(props.get()));
 }
 
 void crocksdb_sstfilereader_destroy(crocksdb_sstfilereader_t* reader) {

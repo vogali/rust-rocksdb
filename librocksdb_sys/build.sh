@@ -2,7 +2,7 @@
 
 set -e
 
-con=1
+con=8
 if [ "$MAKE_PARALLELISM" ]; then
   con=$MAKE_PARALLELISM
 else
@@ -124,12 +124,10 @@ function compile_rocksdb() {
         return
     fi
 
-    vernum=33efdde8316759f1efc6a2a228c5efcf01f09cbc
     echo building rocksdb
-    rm -rf rocksdb rocksdb-$vernum
-    git clone -b zhangjinpeng/sst-reader https://github.com/zhangjinpeng1987/rocksdb rocksdb-$vernum
+    rm -rf rocksdb
+    git clone -b uncp/sst-reader https://github.com/UncP/rocksdb rocksdb
     wd=`pwd`
-    mv rocksdb-$vernum rocksdb
     cd rocksdb
     export EXTRA_CFLAGS="-fPIC -I${wd}/zlib-1.2.11 -I${wd}/bzip2-1.0.6 -I${wd}/snappy-1.1.1 -I${wd}/lz4-r131/lib -I${wd}/zstd-1.2.0/lib"
     export EXTRA_CXXFLAGS="-DZLIB -DBZIP2 -DSNAPPY -DLZ4 -DZSTD $EXTRA_CFLAGS"
