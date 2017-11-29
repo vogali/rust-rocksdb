@@ -12,7 +12,8 @@
 // limitations under the License.
 
 use rocksdb::*;
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::{Write, Seek, SeekFrom};
 use tempdir::TempDir;
 
 pub fn gen_sst(
@@ -379,4 +380,68 @@ fn test_ingest_simulate_real_world() {
             ],
         );
     }
+}
+
+const ROCKSDB_GLOBAL_SEQNO_STR: &'static str = "rocksdb.external_sst_file.global_seqno";
+const ROCKSDB_VERSION_STR: &'static str = "rocksdb.external_sst_file.version";
+
+#[test]
+fn test_sst_file_reader() {
+    let path = TempDir::new("_rust_rocksdb_test_sst_file_reader").expect("");
+    let file = path.path().join("sst_file_reader");
+    let sstfile_str = file.to_str().unwrap();
+    gen_sst(
+        ColumnFamilyOptions::new(),
+        None,
+        sstfile_str,
+        &[(b"k1", b"v1"), (b"k2", b"v2"), (b"k3", b"v3")],
+    );
+
+    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), 0);
+    let props = reader.get_properties();
+    assert_eq!(props.raw_key_size(), 30);
+    assert_eq!(props.raw_value_size(), 6);
+    assert_eq!(props.num_entries(), 3);
+    let user_props = props.user_collected_properties();
+    assert_eq!(user_props.get(ROCKSDB_VERSION_STR).unwrap(), [2, 0, 0, 0]);
+    assert_eq!(
+        user_props.get(ROCKSDB_GLOBAL_SEQNO_STR).unwrap(),
+        [0, 0, 0, 0, 0, 0, 0, 0]
+    );
+}
+
+#[test]
+fn test_modify_sst_file_global_seqno() {
+    let path = TempDir::new("_rust_rocksdb_test_sst_file_reader").expect("");
+    let file = path.path().join("modify_sst_file_global_seqno");
+    let sstfile_str = file.to_str().unwrap();
+    gen_sst(
+        ColumnFamilyOptions::new(),
+        None,
+        sstfile_str,
+        &[(b"k1", b"v1"), (b"k2", b"v2")],
+    );
+
+    // read sst file to get information about seq no
+    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), 0);
+    let props = reader.get_properties();
+    let user_props = props.user_collected_properties();
+    // offset of seq no in the sst file
+    let off = props.get_property_offset(ROCKSDB_GLOBAL_SEQNO_STR.as_bytes());
+    // length of offset
+    let len = user_props.get(ROCKSDB_GLOBAL_SEQNO_STR).unwrap().len();
+    assert!(off > 0);
+    assert_eq!(len, 8);
+
+    // use file io to modify sst file
+    let mut file = OpenOptions::new().write(true).open(sstfile_str).unwrap();
+    file.seek(SeekFrom::Start(off)).unwrap();
+    file.write(&[0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+    file.flush().unwrap();
+
+    // verify that modified sst file can be ingested into rocksdb
+    let db = create_default_database(&path);
+    db.ingest_external_file(&IngestExternalFileOptions::new(), &[sstfile_str]).unwrap();
+    assert_eq!(db.get(b"k1").unwrap().unwrap(), b"v1");
+    assert_eq!(db.get(b"k2").unwrap().unwrap(), b"v2");
 }
