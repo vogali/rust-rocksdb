@@ -13,7 +13,7 @@
 
 use rocksdb::*;
 use std::fs::{self, OpenOptions};
-use std::io::{Write, Seek, SeekFrom};
+use std::io::{Seek, SeekFrom, Write};
 use tempdir::TempDir;
 
 pub fn gen_sst(
@@ -441,7 +441,8 @@ fn test_modify_sst_file_global_seqno() {
 
     // verify that modified sst file can be ingested into rocksdb
     let db = create_default_database(&path);
-    db.ingest_external_file(&IngestExternalFileOptions::new(), &[sstfile_str]).unwrap();
+    db.ingest_external_file(&IngestExternalFileOptions::new(), &[sstfile_str])
+        .unwrap();
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"v1");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"v2");
 }
