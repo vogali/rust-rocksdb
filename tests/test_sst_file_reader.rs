@@ -17,8 +17,9 @@ use test_ingest_external_file::gen_sst;
 
 #[test]
 fn test_sst_file_reader() {
-    let path = TempDir::new("_rust_rocksdb_temp_sst_file").expect("");
-    let sstfile_str = path.path().to_str().unwrap();
+    let path = TempDir::new("_rust_rocksdb_test_sst_file_reader").expect("");
+    let file = path.path().join("test_sst_file");
+    let sstfile_str = file.to_str().unwrap();
     gen_sst(
         ColumnFamilyOptions::new(),
         None,
