@@ -1788,13 +1788,13 @@ pub struct SstFileReader {
 unsafe impl Send for SstFileReader {}
 
 impl SstFileReader {
-    pub fn new(path: &[u8], verify_checksum: c_uchar) -> SstFileReader {
+    pub fn new(path: &[u8], verify_checksum: bool) -> SstFileReader {
         unsafe {
             SstFileReader {
                 inner: crocksdb_ffi::crocksdb_sstfilereader_create(
                     path.as_ptr(),
                     path.len(),
-                    verify_checksum,
+                    verify_checksum as c_uchar,
                 ),
             }
         }
