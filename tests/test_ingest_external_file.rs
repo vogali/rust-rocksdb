@@ -397,7 +397,7 @@ fn test_sst_file_reader() {
         &[(b"k1", b"v1"), (b"k2", b"v2"), (b"k3", b"v3")],
     );
 
-    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), 0);
+    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), false);
     let props = reader.get_properties();
     assert_eq!(props.raw_key_size(), 30);
     assert_eq!(props.raw_value_size(), 6);
@@ -423,7 +423,7 @@ fn test_modify_sst_file_global_seqno() {
     );
 
     // read sst file to get information about seq no
-    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), 0);
+    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), false);
     let props = reader.get_properties();
     let user_props = props.user_collected_properties();
     // offset of seq no in the sst file
