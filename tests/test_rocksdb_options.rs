@@ -609,7 +609,7 @@ fn test_block_based_options() {
         opts.get_statistics_ticker_count(TickerType::ReadAmpTotalReadBytes),
         0
     );
-    assert_ne!(
+    assert_eq!(
         opts.get_statistics_ticker_count(TickerType::ReadAmpEstimateUsefulBytes),
         0
     );

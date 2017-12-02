@@ -397,8 +397,12 @@ fn test_sst_file_reader() {
         &[(b"k1", b"v1"), (b"k2", b"v2"), (b"k3", b"v3")],
     );
 
-    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), false);
-    let props = reader.get_properties();
+    let mut reader = SstFileReader::new(
+        sstfile_str.as_bytes(),
+        false,
+        Box::new(DefaultSstFileReaderHandler {}),
+    );
+    let props = reader.get_properties().unwrap();
     assert_eq!(props.raw_key_size(), 30);
     assert_eq!(props.raw_value_size(), 6);
     assert_eq!(props.num_entries(), 3);
@@ -423,12 +427,14 @@ fn test_modify_sst_file_global_seqno() {
     );
 
     // read sst file to get information about seq no
-    let mut reader = SstFileReader::new(sstfile_str.as_bytes(), false);
-    let props = reader.get_properties();
+    let mut reader = SstFileReader::new(
+        sstfile_str.as_bytes(),
+        false,
+        Box::new(DefaultSstFileReaderHandler {}),
+    );
+    let props = reader.get_properties().unwrap();
     let user_props = props.user_collected_properties();
-    // offset of seq no in the sst file
     let off = props.get_property_offset(ROCKSDB_GLOBAL_SEQNO_STR.as_bytes());
-    // length of offset
     let len = user_props.get(ROCKSDB_GLOBAL_SEQNO_STR).unwrap().len();
     assert!(off > 0);
     assert_eq!(len, 8);

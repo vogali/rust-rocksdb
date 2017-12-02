@@ -1551,10 +1551,24 @@ crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index);
 
 /* Sst File Reader */
 extern C_ROCKSDB_LIBRARY_API crocksdb_sstfilereader_t*
-crocksdb_sstfilereader_create(const char *file, size_t len, unsigned char verify_checksum);
+crocksdb_sstfilereader_create(
+    const char *file, size_t len,
+    unsigned char verify_checksum,
+    void *handler,
+    void (*kv_handler)(void *, const char *, size_t, const char *, size_t, uint64_t, unsigned char),
+    void (*info_handler)(void *, const char *, size_t),
+    void (*err_handler)(void *, const char *, size_t),
+    void (*destructor)(void *));
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_sstfilereader_read_sequential(
+    crocksdb_sstfilereader_t *reader, uint64_t read_num,
+    unsigned char has_from, const char *from_key, size_t from_len,
+    unsigned char has_to, const char *to_key, size_t to_len,
+    unsigned char use_from_as_prefix, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_table_properties_t*
-crocksdb_sstfilereader_read_table_properties(crocksdb_sstfilereader_t *reader);
+crocksdb_sstfilereader_read_table_properties(crocksdb_sstfilereader_t *reader, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_sstfilereader_destroy(crocksdb_sstfilereader_t* reader);

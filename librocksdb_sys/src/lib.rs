@@ -1133,9 +1133,22 @@ extern "C" {
         path: *const u8,
         len: size_t,
         verify_checksum: c_uchar,
+        handler: *mut c_void,
+        kv_handler: extern "C" fn(*mut c_void, *const u8, size_t, *const u8, size_t, uint64_t, c_uchar),
+        info_handler: extern "C" fn(*mut c_void, *const u8, size_t),
+        err_handler: extern "C" fn(*mut c_void, *const u8, size_t),
+        destructor: extern "C" fn(*mut c_void),
     ) -> *mut SstFileReader;
+    pub fn crocksdb_sstfilereader_read_sequential(
+        reader: *mut SstFileReader, read_num: uint64_t,
+        has_from: c_uchar, from_key: *const u8, from_len: size_t,
+        has_to: c_uchar, to_key: *const u8, to_len: size_t,
+        use_from_as_prefix: c_uchar,
+        errptr: *mut *mut c_char,
+    );
     pub fn crocksdb_sstfilereader_read_table_properties(
         reader: *mut SstFileReader,
+        errptr: *mut *mut c_char,
     ) -> *mut DBTableProperties;
     pub fn crocksdb_sstfilereader_destroy(reader: *mut SstFileReader);
 

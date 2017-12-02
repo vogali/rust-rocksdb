@@ -147,7 +147,6 @@ struct crocksdb_livefiles_t       { std::vector<LiveFileMetaData> rep; };
 struct crocksdb_column_family_handle_t  { ColumnFamilyHandle* rep; };
 struct crocksdb_envoptions_t      { EnvOptions        rep; };
 struct crocksdb_ingestexternalfileoptions_t  { IngestExternalFileOptions rep; };
-struct crocksdb_sstfilereader_t   { SstFileReader*    rep; };
 struct crocksdb_sstfilewriter_t   { SstFileWriter*    rep; };
 struct crocksdb_externalsstfileinfo_t   { ExternalSstFileInfo rep; };
 struct crocksdb_ratelimiter_t     { RateLimiter*      rep; };
@@ -3739,22 +3738,72 @@ int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
 }
 
 /* Sst File Reader */
+struct crocksdb_sstfilereader_t : public SstFileReader {
+  void* handler_;
+  void (*destructor_)(void *);
+  crocksdb_sstfilereader_t(const char *file, size_t len, unsigned char verify_checksum,
+      std::function<void(const Slice&, const Slice&, SequenceNumber, unsigned char)> kv_handler,
+      std::function<void(const std::string&)> info_handler,
+      std::function<void(const std::string&)> err_handler)
+  :SstFileReader(std::string(file, len), verify_checksum, kv_handler, info_handler, err_handler) {}
+
+  ~crocksdb_sstfilereader_t() {
+    (*destructor_)(handler_);
+  }
+};
+
 crocksdb_sstfilereader_t*
-crocksdb_sstfilereader_create(const char *file, size_t len, unsigned char verify_checksum) {
-  crocksdb_sstfilereader_t* reader = new crocksdb_sstfilereader_t;
-  reader->rep = new SstFileReader(std::string(file, len), verify_checksum);
+crocksdb_sstfilereader_create(
+  const char *file, size_t len,
+  unsigned char verify_checksum,
+  void *handler,
+  void (*kv_handler_)(void *, const char *, size_t, const char *, size_t, uint64_t, unsigned char),
+  void (*info_handler_)(void *, const char *, size_t),
+  void (*err_handler_)(void *, const char *, size_t),
+  void (*destructor)(void *)) {
+  auto kv_handler = [handler, kv_handler_](const Slice &s1, const Slice &s2,
+                                   SequenceNumber seq, unsigned char type) {
+    kv_handler_(handler, s1.data(), s1.size(), s2.data(), s2.size(), seq, type);
+  };
+  auto info_handler = [handler, info_handler_](const Slice &slice) {
+    info_handler_(handler, slice.data(), slice.size());
+  };
+  auto err_handler = [handler, err_handler_](const Slice &slice) {
+    err_handler_(handler, slice.data(), slice.size());
+  };
+  crocksdb_sstfilereader_t* reader = new crocksdb_sstfilereader_t(
+    file, len, verify_checksum, kv_handler, info_handler, err_handler
+  );
+  reader->handler_ = handler;
+  reader->destructor_ = destructor;
   return reader;
 }
 
+void
+crocksdb_sstfilereader_read_sequential(crocksdb_sstfilereader_t *reader, uint64_t read_num,
+                    unsigned char has_from, const char *from_key, size_t from_len,
+                    unsigned char has_to, const char *to_key, size_t to_len,
+                    unsigned char use_from_as_prefix, char** errptr) {
+  auto s = reader->ReadSequential(
+      read_num, has_from, std::string(from_key, from_len), has_to, std::string(to_key, to_len),
+      use_from_as_prefix);
+  if (!s.ok()) {
+    SaveError(errptr, s);
+  }
+}
+
 crocksdb_table_properties_t*
-crocksdb_sstfilereader_read_table_properties(crocksdb_sstfilereader_t *reader) {
-  std::shared_ptr<const TableProperties> props(new TableProperties);
-  reader->rep->ReadTableProperties(&props);
+crocksdb_sstfilereader_read_table_properties(crocksdb_sstfilereader_t *reader, char** errptr) {
+  std::shared_ptr<const TableProperties> props;
+  auto s = reader->ReadTableProperties(&props);
+  if (!s.ok()) {
+    SaveError(errptr, s);
+    return nullptr;
+  }
   return reinterpret_cast<crocksdb_table_properties_t*>(const_cast<TableProperties*>(props.get()));
 }
 
 void crocksdb_sstfilereader_destroy(crocksdb_sstfilereader_t* reader) {
-  delete reader->rep;
   delete reader;
 }
 
