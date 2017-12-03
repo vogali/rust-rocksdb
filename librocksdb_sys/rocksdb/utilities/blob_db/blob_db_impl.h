@@ -28,7 +28,7 @@
 #include "util/mpsc.h"
 #include "util/mutexlock.h"
 #include "util/timer_queue.h"
-#include "utilities/blob_db/blob_db.h"
+#include "rocksdb/utilities/blob_db.h"
 #include "utilities/blob_db/blob_file.h"
 #include "utilities/blob_db/blob_log_format.h"
 #include "utilities/blob_db/blob_log_reader.h"
