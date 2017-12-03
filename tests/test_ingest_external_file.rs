@@ -415,6 +415,26 @@ fn test_sst_file_reader() {
 }
 
 #[test]
+fn test_sst_file_reader_read_sequential() {
+    let path = TempDir::new("_rust_rocksdb_test_sst_file_reader").expect("");
+    let file = path.path().join("sst_file_reader_read_sequential");
+    let sstfile_str = file.to_str().unwrap();
+    gen_sst(
+        ColumnFamilyOptions::new(),
+        None,
+        sstfile_str,
+        &[(b"k1", b"v1"), (b"k2", b"v2")],
+    );
+
+    let mut reader = SstFileReader::new(
+        sstfile_str.as_bytes(),
+        false,
+        Box::new(DefaultSstFileReaderHandler {}),
+    );
+    assert!(reader.read_sequential(2, true, b"k1", true, b"k2", false).is_ok());
+}
+
+#[test]
 fn test_modify_sst_file_global_seqno() {
     let path = TempDir::new("_rust_rocksdb_test_sst_file_reader").expect("");
     let file = path.path().join("modify_sst_file_global_seqno");
