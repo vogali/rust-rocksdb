@@ -31,6 +31,7 @@
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/write_batch.h"
+#include "rocksdb/utilities/blob_db.h"
 #include <stdlib.h>
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
@@ -108,6 +109,7 @@ using rocksdb::TablePropertiesCollector;
 using rocksdb::TablePropertiesCollectorFactory;
 using rocksdb::KeyVersion;
 using rocksdb::DbPath;
+using rocksdb::BlobDB;
 
 using std::shared_ptr;
 
@@ -602,7 +604,7 @@ crocksdb_t* crocksdb_open_column_families(
 
   DB* db;
   std::vector<ColumnFamilyHandle*> handles;
-  if (SaveError(errptr, DB::Open(DBOptions(db_options->rep),
+  if (SaveError(errptr, DB::Open(DBOptions(db_options->rep), BlobDBOptions(),
           std::string(name), column_families, &handles, &db))) {
     return nullptr;
   }
@@ -1158,7 +1160,7 @@ void crocksdb_destroy_db(
     const crocksdb_options_t* options,
     const char* name,
     char** errptr) {
-  SaveError(errptr, DestroyDB(name, options->rep));
+  SaveError(errptr, DestroyBlobDB(name, options->rep), BlobDBOptions());
 }
 
 void crocksdb_repair_db(
