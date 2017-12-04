@@ -606,7 +606,7 @@ crocksdb_t* crocksdb_open_column_families(
 
   DB* db;
   std::vector<ColumnFamilyHandle*> handles;
-  if (SaveError(errptr, DB::Open(DBOptions(db_options->rep), BlobDBOptions(),
+  if (SaveError(errptr, BlobDB::Open(DBOptions(db_options->rep), BlobDBOptions(),
           std::string(name), column_families, &handles, &db))) {
     return nullptr;
   }
@@ -1162,7 +1162,7 @@ void crocksdb_destroy_db(
     const crocksdb_options_t* options,
     const char* name,
     char** errptr) {
-  SaveError(errptr, DestroyBlobDB(name, options->rep), BlobDBOptions());
+  SaveError(errptr, DestroyBlobDB(name, options->rep, BlobDBOptions()));
 }
 
 void crocksdb_repair_db(
