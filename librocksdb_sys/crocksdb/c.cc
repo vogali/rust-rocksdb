@@ -109,7 +109,7 @@ using rocksdb::TablePropertiesCollector;
 using rocksdb::TablePropertiesCollectorFactory;
 using rocksdb::KeyVersion;
 using rocksdb::DbPath;
-using rocksdb::BlobDB;
+using rocksdb::blob_db;
 
 using std::shared_ptr;
 
