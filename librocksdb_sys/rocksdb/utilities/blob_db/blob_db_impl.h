@@ -217,6 +217,8 @@ class BlobDBImpl : public BlobDB {
 
   using BlobDB::Delete;
   Status Delete(const WriteOptions& options, const Slice& key) override;
+  Status Delete(const WriteOptions& options, ColumnFamilyHandle* column_family,
+                const Slice& key) override;
 
   using BlobDB::Get;
   Status Get(const ReadOptions& read_options, ColumnFamilyHandle* column_family,
@@ -224,6 +226,8 @@ class BlobDBImpl : public BlobDB {
 
   using BlobDB::NewIterator;
   virtual Iterator* NewIterator(const ReadOptions& read_options) override;
+  virtual Iterator* NewIterator(const ReadOptions& options,
+                                ColumnFamilyHandle* column_family) override ;
 
   using BlobDB::NewIterators;
   virtual Status NewIterators(
@@ -236,6 +240,11 @@ class BlobDBImpl : public BlobDB {
   using BlobDB::MultiGet;
   virtual std::vector<Status> MultiGet(
       const ReadOptions& read_options,
+      const std::vector<Slice>& keys,
+      std::vector<std::string>* values) override;
+  virtual std::vector<Status> MultiGet(
+      const ReadOptions& options,
+      const std::vector<ColumnFamilyHandle*>& column_families,
       const std::vector<Slice>& keys,
       std::vector<std::string>* values) override;
 

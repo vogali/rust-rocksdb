@@ -672,6 +672,17 @@ Status BlobDBImpl::Delete(const WriteOptions& options, const Slice& key) {
   return s;
 }
 
+Status BlobDBImpl::Delete(const WriteOptions& options, ColumnFamilyHandle* column_family,
+                          const Slice& key) {
+  SequenceNumber lsn = db_impl_->GetLatestSequenceNumber();
+  Status s = db_->Delete(options, column_family, key);
+
+  if (bdb_options_.enable_garbage_collection) {
+    // add deleted key to list of keys that have been deleted for book-keeping
+    delete_keys_q_.enqueue({column_family, key.ToString(), lsn});
+  }
+}
+
 class BlobDBImpl::BlobInserter : public WriteBatch::Handler {
  private:
   const WriteOptions& options_;
@@ -694,15 +705,15 @@ class BlobDBImpl::BlobInserter : public WriteBatch::Handler {
 
   virtual Status PutCF(uint32_t column_family_id, const Slice& key,
                        const Slice& value) override {
-    if (column_family_id != default_cf_id_) {
-      return Status::NotSupported(
-          "Blob DB doesn't support non-default column family.");
-    }
+    // if (column_family_id != default_cf_id_) {
+      // return Status::NotSupported(
+          // "Blob DB doesn't support non-default column family.");
+    // }
     std::string new_value;
     Slice value_slice;
     uint64_t expiration =
         blob_db_impl_->ExtractExpiration(key, value, &value_slice, &new_value);
-    Status s = blob_db_impl_->PutBlobValue(options_, 0, key, value_slice,
+    Status s = blob_db_impl_->PutBlobValue(options_, column_family_id, key, value_slice,
                                            expiration, sequence_, &batch_);
     sequence_++;
     return s;
@@ -1119,6 +1130,32 @@ std::vector<Status> BlobDBImpl::MultiGet(
   return statuses;
 }
 
+std::vector<Status> BlobDBImpl::MultiGet(
+    const ReadOptions& options,
+    const std::vector<ColumnFamilyHandle*>& column_families,
+    const std::vector<Slice>& keys,
+    std::vector<std::string>* values) {
+  // Get a snapshot to avoid blob file get deleted between we
+  // fetch and index entry and reading from the file.
+  ReadOptions ro(read_options);
+  bool snapshot_created = SetSnapshotIfNeeded(&ro);
+
+  std::vector<Status> statuses;
+  statuses.reserve(keys.size());
+  values->clear();
+  values->reserve(keys.size());
+  PinnableSlice value;
+  for (size_t i = 0; i < keys.size(); i++) {
+    statuses.push_back(Get(ro, column_families[i], keys[i], &value));
+    values->push_back(value.ToString());
+    value.Reset();
+  }
+  if (snapshot_created) {
+    db_->ReleaseSnapshot(ro.snapshot);
+  }
+  return statuses;
+}
+
 bool BlobDBImpl::SetSnapshotIfNeeded(ReadOptions* read_options) {
   assert(read_options != nullptr);
   if (read_options->snapshot != nullptr) {
@@ -1265,10 +1302,10 @@ Status BlobDBImpl::GetBlobValue(const Slice& key, const Slice& index_entry,
 Status BlobDBImpl::Get(const ReadOptions& read_options,
                        ColumnFamilyHandle* column_family, const Slice& key,
                        PinnableSlice* value) {
-  if (column_family != DefaultColumnFamily()) {
-    return Status::NotSupported(
-        "Blob DB doesn't support non-default column family.");
-  }
+  // if (column_family != DefaultColumnFamily()) {
+  //   return Status::NotSupported(
+  //       "Blob DB doesn't support non-default column family.");
+  // }
   // Get a snapshot to avoid blob file get deleted between we
   // fetch and index entry and reading from the file.
   // TODO(yiwu): For Get() retry if file not found would be a simpler strategy.
@@ -2162,6 +2199,23 @@ std::pair<bool, int64_t> BlobDBImpl::RunGC(bool aborted) {
 Iterator* BlobDBImpl::NewIterator(const ReadOptions& read_options) {
   auto* cfd =
       reinterpret_cast<ColumnFamilyHandleImpl*>(DefaultColumnFamily())->cfd();
+  // Get a snapshot to avoid blob file get deleted between we
+  // fetch and index entry and reading from the file.
+  ManagedSnapshot* own_snapshot = nullptr;
+  const Snapshot* snapshot = read_options.snapshot;
+  if (snapshot == nullptr) {
+    own_snapshot = new ManagedSnapshot(db_);
+    snapshot = own_snapshot->snapshot();
+  }
+  auto* iter = db_impl_->NewIteratorImpl(
+      read_options, cfd, snapshot->GetSequenceNumber(),
+      true /*allow_blob*/);
+  return new BlobDBIterator(own_snapshot, iter, this);
+}
+
+Iterator* BlobDBImpl::NewIterator(const ReadOptions& options, ColumnFamilyHandle* column_family) {
+  auto* cfd =
+      reinterpret_cast<ColumnFamilyHandleImpl*>(column_family)->cfd();
   // Get a snapshot to avoid blob file get deleted between we
   // fetch and index entry and reading from the file.
   ManagedSnapshot* own_snapshot = nullptr;
