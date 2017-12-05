@@ -604,7 +604,7 @@ crocksdb_t* crocksdb_open_column_families(
         ColumnFamilyOptions(column_family_options[i]->rep)));
   }
 
-  DB* db;
+  BlobDB* db;
   std::vector<ColumnFamilyHandle*> handles;
   if (SaveError(errptr, BlobDB::Open(DBOptions(db_options->rep), BlobDBOptions(),
           std::string(name), column_families, &handles, &db))) {
@@ -617,7 +617,7 @@ crocksdb_t* crocksdb_open_column_families(
     column_family_handles[i] = c_handle;
   }
   crocksdb_t* result = new crocksdb_t;
-  result->rep = db;
+  result->rep = (DB *)db;
   return result;
 }
 

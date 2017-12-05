@@ -89,13 +89,13 @@ class BlobDB : public StackableDB {
                      const Slice& value) override = 0;
   virtual Status Put(const WriteOptions& options,
                      ColumnFamilyHandle* column_family, const Slice& key,
-                     const Slice& value) override {
-    if (column_family != DefaultColumnFamily()) {
-      return Status::NotSupported(
-          "Blob DB doesn't support non-default column family.");
-    }
-    return Put(options, key, value);
-  }
+                     const Slice& value) override = 0; // {
+    // if (column_family != DefaultColumnFamily()) {
+      // return Status::NotSupported(
+          // "Blob DB doesn't support non-default column family.");
+    // }
+    // return Put(options, key, value);
+  // }
 
   using rocksdb::StackableDB::Delete;
   virtual Status Delete(const WriteOptions& options,
@@ -128,13 +128,13 @@ class BlobDB : public StackableDB {
                           const Slice& value, uint64_t expiration) = 0;
   virtual Status PutUntil(const WriteOptions& options,
                           ColumnFamilyHandle* column_family, const Slice& key,
-                          const Slice& value, uint64_t expiration) {
-    if (column_family != DefaultColumnFamily()) {
-      return Status::NotSupported(
-          "Blob DB doesn't support non-default column family.");
-    }
-    return PutUntil(options, key, value, expiration);
-  }
+                          const Slice& value, uint64_t expiration) = 0; // {
+    // if (column_family != DefaultColumnFamily()) {
+      // return Status::NotSupported(
+          // "Blob DB doesn't support non-default column family.");
+    // }
+    // return PutUntil(options, key, value, expiration);
+  // }
 
   using rocksdb::StackableDB::Get;
   virtual Status Get(const ReadOptions& options,

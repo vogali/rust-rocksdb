@@ -846,6 +846,14 @@ Status BlobDBImpl::Put(const WriteOptions& options, const Slice& key,
   return PutUntil(options, key, value_slice, expiration);
 }
 
+Status BlobDBImpl::Put(const WriteOptions& options, ColumnFamilyHandle* column_family,
+                       const Slice& key, const Slice& value) {
+  std::string new_value;
+  Slice value_slice;
+  uint64_t expiration = ExtractExpiration(key, value, &value_slice, &new_value);
+  return PutUntil(options, column_family, key, value_slice, expiration);
+}
+
 Status BlobDBImpl::PutWithTTL(const WriteOptions& options,
                               const Slice& key, const Slice& value,
                               uint64_t ttl) {
@@ -868,7 +876,9 @@ Status BlobDBImpl::PutUntil(const WriteOptions& options, const Slice& key,
     // not be the actually sequence we are writting. Need to get the sequence
     // from write batch after DB write instead.
     SequenceNumber sequence = GetLatestSequenceNumber() + 1;
-    s = PutBlobValue(options, key, value, expiration, sequence, &batch);
+    s = PutBlobValue(options,
+                     reinterpret_cast<ColumnFamilyHandleImpl*>(DefaultColumnFamily())->GetID(),
+                     key, value, expiration, sequence, &batch);
   }
   if (s.ok()) {
     s = db_->Write(options, &batch);
@@ -877,13 +887,35 @@ Status BlobDBImpl::PutUntil(const WriteOptions& options, const Slice& key,
   return s;
 }
 
-Status BlobDBImpl::PutBlobValue(const WriteOptions& options, const Slice& key,
-                                const Slice& value, uint64_t expiration,
+Status BlobDBImpl::PutUntil(const WriteOptions& options, ColumnFamilyHandle* column_family,
+                            const Slice& key, const Slice& value, uint64_t expiration) {
+  TEST_SYNC_POINT("BlobDBImpl::PutUntil:Start");
+  Status s;
+  WriteBatch batch;
+  {
+    // Release write_mutex_ before DB write to avoid race condition with
+    // flush begin listener, which also require write_mutex_ to sync
+    // blob files.
+    MutexLock l(&write_mutex_);
+    // TODO(yiwu): In case there are multiple writers the latest sequence would
+    // not be the actually sequence we are writting. Need to get the sequence
+    // from write batch after DB write instead.
+    SequenceNumber sequence = GetLatestSequenceNumber() + 1;
+    s = PutBlobValue(options, reinterpret_cast<ColumnFamilyHandleImpl*>(column_family)->GetID(),
+                     key, value, expiration, sequence, &batch);
+  }
+  if (s.ok()) {
+    s = db_->Write(options, &batch);
+  }
+  TEST_SYNC_POINT("BlobDBImpl::PutUntil:Finish");
+  return s;
+}
+
+Status BlobDBImpl::PutBlobValue(const WriteOptions& options, uint32_t column_family_id,
+                                const Slice& key, const Slice& value, uint64_t expiration,
                                 SequenceNumber sequence, WriteBatch* batch) {
   Status s;
   std::string index_entry;
-  uint32_t column_family_id =
-      reinterpret_cast<ColumnFamilyHandleImpl*>(DefaultColumnFamily())->GetID();
   if (value.size() < bdb_options_.min_blob_size) {
     if (expiration == kNoExpiration) {
       // Put as normal value

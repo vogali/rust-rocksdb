@@ -212,6 +212,8 @@ class BlobDBImpl : public BlobDB {
   using BlobDB::Put;
   Status Put(const WriteOptions& options, const Slice& key,
              const Slice& value) override;
+  Status Put(const WriteOptions& options, ColumnFamilyHandle* column_family, const Slice& key,
+             const Slice& value) override;
 
   using BlobDB::Delete;
   Status Delete(const WriteOptions& options, const Slice& key) override;
@@ -252,6 +254,8 @@ class BlobDBImpl : public BlobDB {
   using BlobDB::PutUntil;
   Status PutUntil(const WriteOptions& options, const Slice& key,
                   const Slice& value, uint64_t expiration) override;
+  Status PutUntil(const WriteOptions& options, ColumnFamilyHandle* column_family,
+                  const Slice& key, const Slice& value, uint64_t expiration) override;
 
   Status LinkToBaseDB(DB* db) override;
 
@@ -321,7 +325,7 @@ class BlobDBImpl : public BlobDB {
   uint64_t ExtractExpiration(const Slice& key, const Slice& value,
                              Slice* value_slice, std::string* new_value);
 
-  Status PutBlobValue(const WriteOptions& options, const Slice& key,
+  Status PutBlobValue(const WriteOptions& options, uint32_t column_family_id, const Slice& key,
                       const Slice& value, uint64_t expiration,
                       SequenceNumber sequence, WriteBatch* batch);
 
