@@ -702,7 +702,7 @@ class BlobDBImpl::BlobInserter : public WriteBatch::Handler {
     Slice value_slice;
     uint64_t expiration =
         blob_db_impl_->ExtractExpiration(key, value, &value_slice, &new_value);
-    Status s = blob_db_impl_->PutBlobValue(options_, key, value_slice,
+    Status s = blob_db_impl_->PutBlobValue(options_, 0, key, value_slice,
                                            expiration, sequence_, &batch_);
     sequence_++;
     return s;

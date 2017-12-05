@@ -117,7 +117,7 @@ Status BlobDB::Open(const Options& options, const BlobDBOptions& bdb_options,
 
 Status BlobDB::Open(const DBOptions& db_options_input,
                     const BlobDBOptions& bdb_options, const std::string& dbname,
-                    const std::vector<ColumnFamilyDescriptor>& column_families,
+                    const std::vector<ColumnFamilyDescriptor>& column_families_,
                     std::vector<ColumnFamilyHandle*>* handles, BlobDB** blob_db,
                     bool no_base_db) {
   // if (column_families.size() != 1 ||
@@ -165,6 +165,7 @@ Status BlobDB::Open(const DBOptions& db_options_input,
   // cf_options.compaction_filter_factory.reset(
   //     new BlobIndexCompactionFilterFactory(db_options.env));
   // ColumnFamilyDescriptor cf_descriptor(kDefaultColumnFamilyName, cf_options);
+  std::vector<ColumnFamilyDescriptor> column_families = column_families_;
   for (auto &e : column_families) {
     auto &cf_options = e.options;
     if (cf_options.compaction_filter != nullptr ||
