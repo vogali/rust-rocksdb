@@ -681,6 +681,7 @@ Status BlobDBImpl::Delete(const WriteOptions& options, ColumnFamilyHandle* colum
     // add deleted key to list of keys that have been deleted for book-keeping
     delete_keys_q_.enqueue({column_family, key.ToString(), lsn});
   }
+  return s;
 }
 
 class BlobDBImpl::BlobInserter : public WriteBatch::Handler {
@@ -1131,7 +1132,7 @@ std::vector<Status> BlobDBImpl::MultiGet(
 }
 
 std::vector<Status> BlobDBImpl::MultiGet(
-    const ReadOptions& options,
+    const ReadOptions& read_options,
     const std::vector<ColumnFamilyHandle*>& column_families,
     const std::vector<Slice>& keys,
     std::vector<std::string>* values) {
@@ -2213,7 +2214,7 @@ Iterator* BlobDBImpl::NewIterator(const ReadOptions& read_options) {
   return new BlobDBIterator(own_snapshot, iter, this);
 }
 
-Iterator* BlobDBImpl::NewIterator(const ReadOptions& options, ColumnFamilyHandle* column_family) {
+Iterator* BlobDBImpl::NewIterator(const ReadOptions& read_options, ColumnFamilyHandle* column_family) {
   auto* cfd =
       reinterpret_cast<ColumnFamilyHandleImpl*>(column_family)->cfd();
   // Get a snapshot to avoid blob file get deleted between we
